@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>官庁施設 設計業務等 見積算定ツール</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Meiryo', 'メイリオ', sans-serif; font-size: 13px; background: #f0f2f5; color: #222; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+h1 { background: #1a3a6b; color: #fff; padding: 14px 20px; font-size: 17px; border-radius: 4px 4px 0 0; letter-spacing: 1px; }
+h1 span { font-size: 11px; opacity: 0.8; margin-left: 10px; }
+.basis { background: #e8edf5; padding: 5px 12px; font-size: 11px; color: #555; border-radius: 0 0 4px 4px; margin-bottom: 16px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.10); padding: 16px; margin-bottom: 14px; }
+.card h2 { font-size: 13px; color: #1a3a6b; border-left: 3px solid #1a3a6b; padding-left: 8px; margin-bottom: 12px; font-weight: bold; }
+.card h3 { font-size: 12px; color: #444; margin: 10px 0 6px; font-weight: bold; }
+label { display: block; font-size: 11px; color: #555; margin-bottom: 2px; }
+input[type="text"], input[type="number"], select, textarea {
+  width: 100%; border: 1px solid #c8cdd5; border-radius: 3px; padding: 5px 8px;
+  font-size: 12px; font-family: inherit; background: #fafafa;
+}
+input[type="number"] { text-align: right; }
+input:focus, select:focus { outline: none; border-color: #1a3a6b; background: #fff; }
+textarea { resize: vertical; min-height: 50px; }
+.form-row { margin-bottom: 10px; }
+.form-inline { display: flex; align-items: center; gap: 6px; }
+.form-inline label { white-space: nowrap; min-width: 80px; margin: 0; }
+.unit { font-size: 11px; color: #666; white-space: nowrap; }
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.checkbox-item { display: flex; align-items: center; gap: 4px; padding: 4px 10px;
+  background: #f0f4f9; border-radius: 3px; border: 1px solid #d0d8e8; cursor: pointer; font-size: 12px; }
+.checkbox-item input { margin: 0; cursor: pointer; width: auto; }
+.checkbox-item:hover { background: #e0eaf8; }
+.result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.result-table th { background: #1a3a6b; color: #fff; padding: 6px 8px; text-align: center; white-space: nowrap; }
+.result-table td { padding: 5px 8px; border-bottom: 1px solid #e0e4ea; }
+.result-table tr:nth-child(even) td { background: #f5f7fa; }
+.result-table .num { text-align: right; }
+.result-table .subtotal td { background: #deeaf7 !important; font-weight: bold; }
+.result-table .total-row td { background: #1a3a6b !important; color: #fff; font-weight: bold; }
+.result-table .fee-row td { background: #fff9e6 !important; }
+.result-table .tax-row td { background: #f0f0f0 !important; }
+.result-table .grand-total td { background: #c00 !important; color: #fff; font-weight: bold; font-size: 13px; }
+.btn { padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-family: inherit; font-weight: bold; }
+.btn-primary { background: #1a3a6b; color: #fff; }
+.btn-primary:hover { background: #0f2a55; }
+.btn-success { background: #1e7a4b; color: #fff; margin-left: 8px; }
+.btn-success:hover { background: #155a38; }
+.btn-bar { margin-top: 12px; display: flex; align-items: center; }
+.alert-info { background: #e8f4fd; border: 1px solid #aed0ee; border-radius: 4px; padding: 8px 12px; font-size: 11px; color: #2c6ea0; margin-bottom: 10px; }
+.alert-warn { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 6px 10px; font-size: 11px; color: #856404; margin-bottom: 8px; }
+.highlight { background: #fffbe6; border: 2px solid #ffd700; border-radius: 4px; padding: 10px 14px; text-align: center; font-size: 20px; font-weight: bold; color: #c00; margin-top: 8px; }
+.highlight small { font-size: 12px; color: #555; font-weight: normal; display: block; margin-top: 2px; }
+.formula-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px 12px; font-size: 11px; color: #555; font-family: 'Courier New', monospace; margin: 6px 0; }
+.coeff-info { font-size: 10px; color: #888; margin-top: 3px; background: #f9f9f9; padding: 4px 6px; border-radius: 3px; }
+.section-divider { border: none; border-top: 1px solid #e0e4ea; margin: 10px 0; }
+.result-section { display: none; }
+/* 難易度係数テーブル */
+.diff-table { width:100%; border-collapse:collapse; margin-top:6px; font-size:11px; }
+.diff-table th { background:#2a4a7b; color:#fff; padding:5px 6px; text-align:center; font-size:10px; white-space:nowrap; }
+.diff-table td { padding:4px 6px; border:1px solid #d0d8e8; vertical-align:middle; }
+.diff-table td.domain-lbl { background:#eef2f9; font-weight:bold; white-space:nowrap; font-size:11px; width:70px; }
+.diff-table select { width:100%; font-size:10px; padding:2px 3px; background:#fafafa; }
+.diff-table input[type="number"] { width:62px; text-align:right; font-size:11px; padding:3px 5px; }
+.diff-note { font-size:10px; color:#888; margin-top:4px; }
+.result-section.visible { display: block; }
+.phase-label { display: inline-block; background: #4a7ab5; color: #fff; border-radius: 2px; padding: 1px 6px; font-size: 10px; margin-right: 4px; }
+.domain-label { display: inline-block; background: #6c757d; color: #fff; border-radius: 2px; padding: 1px 6px; font-size: 10px; }
+.fee-summary { margin-top: 16px; }
+.fee-line { display: flex; align-items: center; padding: 6px 12px; border-bottom: 1px solid #e8e8e8; }
+.fee-line .fee-name { flex: 1; font-size: 12px; }
+.fee-line .fee-val { font-size: 13px; font-weight: bold; text-align: right; min-width: 140px; }
+.fee-line.sub { background: #f8f8f8; }
+.fee-line.total { background: #1a3a6b; color: #fff; font-weight: bold; font-size: 14px; }
+.fee-line.grand { background: #c00; color: #fff; font-weight: bold; font-size: 15px; }
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .container { max-width: 100%; padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>官庁施設 設計業務等 見積算定ツール<span>官庁施設の設計業務等積算要領（令和６年改定）準拠</span></h1>
+  <div class="basis">根拠：官庁施設の設計業務等積算要領（令和６年改定）｜別表1-1 係数 ／ 別表2-1 複雑度係数 ／ 別表2-2 設計業務細分率 ／ 別表2-3 工事監理業務細分率</div>
+
+  <!-- 基本情報 -->
+  <div class="card no-print">
+    <h2>■ 基本情報</h2>
+    <div class="grid3">
+      <div class="form-row">
+        <label>業務名称</label>
+        <input type="text" id="projectName" placeholder="○○庁舎新築設計業務" />
+      </div>
+      <div class="form-row">
+        <label>発注機関</label>
+        <input type="text" id="client" placeholder="○○省○○局" />
+      </div>
+      <div class="form-row">
+        <label>見積作成日</label>
+        <input type="text" id="estimateDate" />
+      </div>
+      <div class="form-row">
+        <label>設計者（会社名）</label>
+        <input type="text" id="designer" placeholder="○○設計事務所" />
+      </div>
+      <div class="form-row">
+        <label>担当者</label>
+        <input type="text" id="person" placeholder="" />
+      </div>
+      <div class="form-row">
+        <label>備考</label>
+        <input type="text" id="noteText" placeholder="" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 建物情報 + 業務種別 -->
+  <div class="grid2">
+    <div class="card">
+      <h2>■ 建物情報</h2>
+
+      <div class="form-row">
+        <label>建物の類型（告示第8号 別添二）</label>
+        <select id="buildingNo" onchange="onBuildingNoChange()">
+          <option value="">-- 選択してください --</option>
+          <option value="1">一　物流施設（車庫・倉庫・立体駐車場等）</option>
+          <option value="2">二　生産施設（工場等）</option>
+          <option value="3">三　運動施設（体育館・武道館等）</option>
+          <option value="4">四　業務施設（事務所・庁舎等）</option>
+          <option value="5">五　商業施設（店舗・百貨店等）</option>
+          <option value="6">六　共同住宅（公営住宅・社宅・寄宿舎等）</option>
+          <option value="7">七　教育施設（幼稚園・小中高等学校等）</option>
+          <option value="8">八　専門的教育・研究施設（大学・研究所等）</option>
+          <option value="9">九　宿泊施設（ホテル・旅館等）</option>
+          <option value="10">十　医療施設（病院・診療所等）</option>
+          <option value="11">十一　福祉・厚生施設（保育園・老人ホーム等）</option>
+          <option value="12">十二　文化・交流・公益施設（公民館・劇場・美術館等）</option>
+          <option value="13">十三　戸建住宅（詳細設計及び構造計算を必要とするもの）</option>
+          <option value="14">十四　戸建住宅（詳細設計を必要とするもの）</option>
+          <option value="15">十五　その他の戸建住宅</option>
+        </select>
+      </div>
+
+      <div class="form-row" id="classRow" style="display:none;">
+        <label>用途等の類型</label>
+        <select id="buildingClass" onchange="onClassChange()">
+          <option value="1">第１類</option>
+          <option value="2">第２類</option>
+        </select>
+        <div class="coeff-info" id="classDesc"></div>
+      </div>
+
+      <div class="form-row">
+        <label>延べ床面積（S）</label>
+        <div class="form-inline">
+          <input type="number" id="area" placeholder="3000" min="1" onchange="onInputChange()" onkeyup="onInputChange()" />
+          <span class="unit">㎡</span>
+        </div>
+        <div id="areaWarn" style="display:none;" class="alert-warn">⚠ 入力面積が適用規模の範囲外です。係数精度が低下する場合があります。</div>
+      </div>
+
+      <div class="form-row">
+        <label>難易度係数（5-4-4：業務分野・業務種別ごとに設定）</label>
+        <table class="diff-table">
+          <thead>
+            <tr>
+              <th rowspan="2">業務分野</th>
+              <th colspan="2">設計業務</th>
+              <th colspan="2">工事監理</th>
+            </tr>
+            <tr>
+              <th>プリセット選択</th><th>係数値</th>
+              <th>プリセット選択</th><th>係数値</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 総合 -->
+            <tr>
+              <td class="domain-lbl">総合</td>
+              <td><select id="diff_g_d_pre" onchange="onDiffPre('g','d')">
+                <optgroup label="別表2-1（改修設計）">
+                  <option value="0.6">A 簡易（0.6）</option>
+                  <option value="1.0" selected>B 標準（1.0）</option>
+                  <option value="1.4">C 複雑（1.4）</option>
+                </optgroup>
+                <optgroup label="5-4-4 難易度補正【総合・設計】">
+                  <option value="1.30">特殊な形状等 戸建以外（1.30）</option>
+                  <option value="1.59">特殊な形状等 戸建住宅（1.59）</option>
+                  <option value="1.08">木造建築物 戸建以外（1.08）</option>
+                </optgroup>
+                <option value="custom">自由入力…</option>
+              </select></td>
+              <td><input type="number" id="diff_g_d" value="1.0" step="0.01" min="0.1" onchange="onDiffCustom('g','d')"></td>
+              <td><select id="diff_g_m_pre" onchange="onDiffPre('g','m')">
+                <optgroup label="別表2-1（改修設計）">
+                  <option value="0.6">A 簡易（0.6）</option>
+                  <option value="1.0" selected>B 標準（1.0）</option>
+                  <option value="1.4">C 複雑（1.4）</option>
+                </optgroup>
+                <optgroup label="5-4-4 難易度補正【総合・監理】">
+                  <option value="1.29">特殊な形状等 戸建以外（1.29）</option>
+                  <option value="1.13">木造建築物 戸建以外（1.13）</option>
+                </optgroup>
+                <option value="custom">自由入力…</option>
+              </select></td>
+              <td><input type="number" id="diff_g_m" value="1.0" step="0.01" min="0.1" onchange="onDiffCustom('g','m')"></td>
+            </tr>
+            <!-- 構造 -->
+            <tr>
+              <td class="domain-lbl">構造</td>
+              <td><select id="diff_s_d_pre" onchange="onDiffPre('s','d')">
+                <optgroup label="別表2-1（改修設計）">
+                  <option value="0.6">A 簡易（0.6）</option>
+                  <option value="1.0" selected>B 標準（1.0）</option>
+                  <option value="1.4">C 複雑（1.4）</option>
+                </optgroup>
+                <optgroup label="5-4-4 難易度補正【構造・設計】">
+                  <option value="1.22">特殊な形状等 戸建以外（1.22）</option>
+                  <option value="1.38">特殊な形状等 戸建住宅（1.38）</option>
+                </optgroup>
+                <option value="custom">自由入力…</option>
+              </select></td>
+              <td><input type="number" id="diff_s_d" value="1.0" step="0.01" min="0.1" onchange="onDiffCustom('s','d')"></td>
+              <td><select id="diff_s_m_pre" onchange="onDiffPre('s','m')">
+                <optgroup label="別表2-1（改修設計）">
+                  <option value="0.6">A 簡易（0.6）</option>
+                  <option value="1.0" selected>B 標準（1.0）</option>
+                  <option value="1.4">C 複雑（1.4）</option>
+                </optgroup>
+                <option value="custom">自由入力…</option>
+              </select></td>
+              <td><input type="number" id="diff_s_m" value="1.0" step="0.01" min="0.1" onchange="onDiffCustom('s','m')"></td>
+            </tr>
+            <!-- 設備 -->
+            <tr>
+              <td class="domain-lbl">設備</td>
+              <td><select id="diff_e_d_pre" onchange="onDiffPre('e','d')">
+                <optgroup label="別表2-1（改修設計）">
+                  <option value="0.6">A 簡易（0.6）</option>
+                  <option value="1.0" selected>B 標準（1.0）</option>
+                  <option value="1.4">C 複雑（1.4）</option>
+                </optgroup>
+                <optgroup label="5-4-4 難易度補正【設備・設計】">
+                  <option value="1.09">特殊な形状等 戸建以外（1.09）</option>
+                  <option value="1.35">特殊な形状等 戸建住宅（1.35）</option>
+                  <option value="1.21">特殊な性能を有する設備等（1.21）</option>
+                </optgroup>
+                <option value="custom">自由入力…</option>
+              </select></td>
+              <td><input type="number" id="diff_e_d" value="1.0" step="0.01" min="0.1" onchange="onDiffCustom('e','d')"></td>
+              <td><select id="diff_e_m_pre" onchange="onDiffPre('e','m')">
+                <optgroup label="別表2-1（改修設計）">
+                  <option value="0.6">A 簡易（0.6）</option>
+                  <option value="1.0" selected>B 標準（1.0）</option>
+                  <option value="1.4">C 複雑（1.4）</option>
+                </optgroup>
+                <optgroup label="5-4-4 難易度補正【設備・監理】">
+                  <option value="1.08">特殊な性能を有する設備等（1.08）</option>
+                </optgroup>
+                <option value="custom">自由入力…</option>
+              </select></td>
+              <td><input type="number" id="diff_e_m" value="1.0" step="0.01" min="0.1" onchange="onDiffCustom('e','m')"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="diff-note">※ 5-4-4の係数は官庁施設の設計業務等積算要領（令和6年改定）に基づく。複数の補正係数が該当する場合は乗算して自由入力欄に入力してください。</div>
+      </div>
+
+      <div id="coeffDisplay" class="formula-box" style="display:none; font-size:10px; line-height:1.8;"></div>
+    </div>
+
+    <div class="card">
+      <h2>■ 対象フェーズ</h2>
+
+      <h3>業務フェーズ（複数選択可）</h3>
+      <div class="checkbox-group" style="gap:8px;">
+        <label class="checkbox-item" style="padding:8px 14px;">
+          <input type="checkbox" id="phaseBasic" checked onchange="onInputChange()" />
+          <span>基本設計</span>
+        </label>
+        <label class="checkbox-item" style="padding:8px 14px;">
+          <input type="checkbox" id="phaseImpl" checked onchange="onInputChange()" />
+          <span>実施設計<br><small style="font-size:10px;color:#666;">（設計意図伝達含む）</small></span>
+        </label>
+        <label class="checkbox-item" style="padding:8px 14px;">
+          <input type="checkbox" id="phaseRenovation" onchange="onInputChange()" />
+          <span>診断改修設計</span>
+        </label>
+        <label class="checkbox-item" style="padding:8px 14px;">
+          <input type="checkbox" id="phaseSupervision" onchange="onInputChange()" />
+          <span>工事監理業務</span>
+        </label>
+      </div>
+
+      <hr class="section-divider" />
+
+      <h3>業務分野</h3>
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="catGeneral" checked onchange="onInputChange()" />
+          総合（建築）
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="catStructure" checked onchange="onInputChange()" />
+          構造
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="catEquipment" checked onchange="onInputChange()" />
+          設備
+        </label>
+      </div>
+
+      <hr class="section-divider" />
+
+      <h3>費用算出パラメータ</h3>
+      <div class="coeff-info" style="margin-bottom:8px;">
+        建築設計の経費算出方式：① 直接人件費　② 諸費用＝①×諸費用率　③ 技術費＝(①+②)×技術費率　計＝①+②+③＋消費税
+      </div>
+      <div class="grid2">
+        <div class="form-row">
+          <label>技師C 日額単価（令和8年度）</label>
+          <div class="form-inline">
+            <input type="number" id="unitPrice" value="42500" onchange="onInputChange()" />
+            <span class="unit">円/人・日</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>諸費用率（直接人件費に対する率）</label>
+          <div class="form-inline">
+            <input type="number" id="shohiRate" value="110" min="0" max="300" step="1" onchange="onInputChange()" />
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>技術費率（直接人件費＋諸費用に対する率）</label>
+          <div class="form-inline">
+            <input type="number" id="gijutsuRate" value="15" min="0" max="100" step="0.1" onchange="onInputChange()" />
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>消費税率</label>
+          <div class="form-inline">
+            <input type="number" id="taxRate" value="10" min="0" max="100" step="0.1" onchange="onInputChange()" />
+            <span class="unit">%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 計算ボタン -->
+  <div class="btn-bar no-print">
+    <button class="btn btn-primary" onclick="calculate()">▶ 計算実行</button>
+    <button class="btn btn-success" onclick="exportExcel()" id="excelBtn" style="display:none;">📥 Excel出力</button>
+    <button class="btn" onclick="exportWord()" id="wordBtn" style="display:none; background:#2e5fa3; color:#fff; margin-left:8px;">📄 Word出力（見積書）</button>
+  </div>
+
+  <!-- 計算結果 -->
+  <div class="result-section" id="resultSection">
+    <div class="card" style="margin-top:14px;">
+      <h2>■ 業務量計算結果</h2>
+      <div id="resultInfo" class="alert-info" style="margin-bottom:12px;"></div>
+      <table class="result-table" id="resultTable">
+        <thead>
+          <tr>
+            <th>業務内容</th>
+            <th>業務分野</th>
+            <th>係数 a</th>
+            <th>係数 b</th>
+            <th>A = a×S<sup>b</sup><br>(人・時間)</th>
+            <th>業務量率</th>
+            <th>難易度</th>
+            <th>業務量<br>(人・時間)</th>
+            <th>業務量<br>(人・日)</th>
+            <th>直接人件費<br>(円)</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody">
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 費用集計 -->
+    <div class="card">
+      <h2>■ 設計費内訳（費用集計）</h2>
+      <div id="feeTable"></div>
+      <div class="highlight" id="totalHighlight"></div>
+    </div>
+  </div>
+</div><!-- /container -->
+
+<script>
+// ============================================================
+// 別表1-1 係数データ（官庁施設の設計業務等積算要領 令和６年改定）
+// key: '番号-類'  d=設計, m=工事監理  g=総合, s=構造, e=設備
+// 出典：R6_官庁施設の設計業務等積算要領.pdf 別表１－１
+// ※ 第四号第２類・第六号は20,000～30,000㎡でA=a×S+b（線形式）
+// ============================================================
+const COEFF = {
+  // 一 物流施設（車庫・倉庫・立体駐車場等 / 立体倉庫・物流ターミナル等）
+  '1-1': { minA:100,  maxA:100000,
+    d:{ g:{a:27.3837,b:0.4606}, s:{a:5.0069,b:0.5846}, e:{a:5.2655,b:0.5323} },
+    m:{ g:{a:4.2470, b:0.5751}, s:{a:0.4091,b:0.7406}, e:{a:0.5424,b:0.6827} }
+  },
+  '1-2': { minA:3200, maxA:100000,
+    d:{ g:{a:3.9616,b:0.7560}, s:{a:0.6712,b:0.8200}, e:{a:0.4393,b:0.8394} },
+    m:{ g:{a:1.8563,b:0.7387}, s:{a:0.0177,b:1.0439}, e:{a:0.1138,b:0.8805} }
+  },
+  // 二 生産施設（組立工場等 / 化学工場・薬品工場・食品工場・特殊設備付工場等）
+  '2-1': { minA:100,  maxA:75000,
+    d:{ g:{a:28.1322,b:0.5313}, s:{a:5.2388,b:0.6278}, e:{a:3.5512,b:0.6567} },
+    m:{ g:{a:8.9383, b:0.5535}, s:{a:3.3898,b:0.5418}, e:{a:2.4378,b:0.5934} }
+  },
+  '2-2': { minA:100,  maxA:75000,
+    d:{ g:{a:40.7832,b:0.5313}, s:{a:7.7623,b:0.6278}, e:{a:5.9625,b:0.6567} },
+    m:{ g:{a:11.5599,b:0.5535}, s:{a:3.3898,b:0.5418}, e:{a:3.1226,b:0.5934} }
+  },
+  // 三 運動施設（体育館・武道館・スポーツジム等 / 屋内プール・スタジアム等）
+  '3-1': { minA:340,  maxA:10000,
+    d:{ g:{a:2.0338,b:0.9273}, s:{a:2.8137,b:0.7491}, e:{a:2.1955,b:0.7979} },
+    m:{ g:{a:0.9646,b:0.9113}, s:{a:1.1854,b:0.6704}, e:{a:0.6952,b:0.8504} }
+  },
+  '3-2': { minA:3500, maxA:49000,
+    d:{ g:{a:18.156,b:0.7264}, s:{a:0.8372,b:0.9010}, e:{a:8.6959,b:0.6898} },
+    m:{ g:{a:0.9646,b:0.9113}, s:{a:1.1854,b:0.6704}, e:{a:0.6952,b:0.8504} }
+  },
+  // 四 業務施設（事務所等 / 銀行・本社ビル・庁舎等）
+  // ※ 第２類は20,000㎡≦S≦30,000㎡でA=a×S+bの線形式（multiRange）
+  '4-1': { minA:100,  maxA:50000,
+    d:{ g:{a:2.6180,b:0.8833}, s:{a:2.1405,b:0.7672}, e:{a:0.2144,b:1.0615} },
+    m:{ g:{a:4.7279,b:0.6929}, s:{a:1.0242,b:0.6875}, e:{a:0.4045,b:0.8741} }
+  },
+  '4-2': { minA:300, maxA:100000, multiRange:true,
+    ranges:[
+      { minA:300,   maxA:19999,  linear:false,
+        d:{ g:{a:4.2525,b:0.8833}, s:{a:2.7775,b:0.7672}, e:{a:0.3436,b:1.0615} },
+        m:{ g:{a:6.9500,b:0.6929}, s:{a:1.4312,b:0.6875}, e:{a:0.4045,b:0.8741} } },
+      { minA:20000, maxA:30000,  linear:true,
+        d:{ g:{a:0.8535,b:9705.8},  s:{a:0.1100,b:3339.0},  e:{a:0.1095,b:10446.0} },
+        m:{ g:{a:0.2342,b:1956.4},  s:{a:0.0293,b:710.9},   e:{a:0.0521,b:1283.4}  } },
+      { minA:30001, maxA:100000, linear:false,
+        d:{ g:{a:4.7045,b:0.8656}, s:{a:3.6050,b:0.7293}, e:{a:0.5510,b:0.9820} },
+        m:{ g:{a:6.3506,b:0.7037}, s:{a:1.5737,b:0.6710}, e:{a:0.5524,b:0.8291} } }
+    ]
+  },
+  // 五 商業施設（店舗・料理店・スーパーマーケット等 / 百貨店・ショッピングセンター・ショールーム等）
+  '5-1': { minA:100,  maxA:23000,
+    d:{ g:{a:5.9513,b:0.7125}, s:{a:0.8797,b:0.8008}, e:{a:0.4473,b:0.9265} },
+    m:{ g:{a:0.5563,b:0.9122}, s:{a:0.2265,b:0.7880}, e:{a:0.1052,b:0.9223} }
+  },
+  '5-2': { minA:1500, maxA:80000,
+    d:{ g:{a:16.474,b:0.6686}, s:{a:4.1938,b:0.6690}, e:{a:0.4473,b:0.9265} },
+    m:{ g:{a:0.5563,b:0.9122}, s:{a:0.2265,b:0.7880}, e:{a:1.7890,b:0.6414} }
+  },
+  // 六 共同住宅（公営住宅・社宅・共同住宅・寄宿舎等）
+  // ※ 20,000㎡≦S≦30,000㎡でA=a×S+bの線形式（multiRange）
+  '6-1': { minA:100, maxA:100000, multiRange:true,
+    ranges:[
+      { minA:100,   maxA:19999,  linear:false,
+        d:{ g:{a:5.8423,b:0.7571}, s:{a:1.8168,b:0.7867}, e:{a:0.5905,b:0.8970} },
+        m:{ g:{a:4.1241,b:0.7033}, s:{a:0.2574,b:0.8788}, e:{a:0.2860,b:0.8949} } },
+      { minA:20000, maxA:30000,  linear:true,
+        d:{ g:{a:0.7472,b:-4402.1}, s:{a:0.2100,b:193.9},  e:{a:0.2283,b:-307.0} },
+        m:{ g:{a:0.1250,b:1866.9},  s:{a:0.0383,b:784.5},  e:{a:0.0802,b:416.0}  } },
+      { minA:30001, maxA:100000, linear:false,
+        d:{ g:{a:3.5691,b:0.8271}, s:{a:1.6013,b:0.8059}, e:{a:0.5041,b:0.9187} },
+        m:{ g:{a:4.3181,b:0.6956}, s:{a:0.3271,b:0.8424}, e:{a:0.3053,b:0.8858} } }
+    ]
+  },
+  // 七 教育施設（幼稚園・小学校・中学校・高等学校等）
+  '7-1': { minA:100,  maxA:15000,
+    d:{ g:{a:9.8576,b:0.7620},  s:{a:3.2695,b:0.7379}, e:{a:4.4473,b:0.7317} },
+    m:{ g:{a:22.6387,b:0.5313}, s:{a:1.6641,b:0.6591}, e:{a:1.3704,b:0.7789} }
+  },
+  // 八 専門的教育・研究施設（大学・専門学校等 / 実験施設付大学・専門学校・研究所等）
+  '8-1': { minA:200,  maxA:50000,
+    d:{ g:{a:11.7127,b:0.7628}, s:{a:3.0002,b:0.7322}, e:{a:6.6791,b:0.6989} },
+    m:{ g:{a:4.1616, b:0.7296}, s:{a:1.9885,b:0.6310}, e:{a:1.3362,b:0.7369} }
+  },
+  '8-2': { minA:750,  maxA:50000,
+    d:{ g:{a:12.3779,b:0.7628}, s:{a:4.4667,b:0.7322}, e:{a:7.7544,b:0.6989} },
+    m:{ g:{a:4.1616, b:0.7296}, s:{a:2.7429,b:0.6310}, e:{a:1.5771,b:0.7369} }
+  },
+  // 九 宿泊施設（ホテル・旅館等 / 宴会場等を有するホテル・保養所等）
+  '9-1': { minA:200,  maxA:15000,
+    d:{ g:{a:12.0133,b:0.7109}, s:{a:4.4768,b:0.6654}, e:{a:0.3689,b:0.9792} },
+    m:{ g:{a:3.3837, b:0.7671}, s:{a:0.9558,b:0.7050}, e:{a:0.1801,b:0.9784} }
+  },
+  '9-2': { minA:4400, maxA:46000,
+    d:{ g:{a:1.1646,b:1.0536}, s:{a:1.0259,b:0.8371}, e:{a:0.6062,b:0.9712} },
+    m:{ g:{a:0.1390,b:1.1514}, s:{a:1.2168,b:0.6963}, e:{a:0.1538,b:0.9713} }
+  },
+  // 十 医療施設（病院・診療所等 / 総合病院等）
+  '10-1': { minA:150,  maxA:15000,
+    d:{ g:{a:28.4598,b:0.6397}, s:{a:3.8566,b:0.6888}, e:{a:1.0152,b:0.9052} },
+    m:{ g:{a:5.1224, b:0.6980}, s:{a:0.4701,b:0.7184}, e:{a:0.8479,b:0.7288} }
+  },
+  '10-2': { minA:4200, maxA:100000,
+    d:{ g:{a:10.703,b:0.7578}, s:{a:12.060,b:0.5793}, e:{a:1.8553,b:0.8269} },
+    m:{ g:{a:1.3190,b:0.8441}, s:{a:1.6561,b:0.6404}, e:{a:0.2241,b:0.9121} }
+  },
+  // 十一 福祉・厚生施設（保育園・老人ホーム・老人保健施設・多機能福祉施設等）
+  '11-1': { minA:100,  maxA:15000,
+    d:{ g:{a:5.3732,b:0.8067}, s:{a:1.2819,b:0.8334}, e:{a:0.3618,b:1.0061} },
+    m:{ g:{a:4.6516,b:0.7088}, s:{a:0.9945,b:0.6591}, e:{a:0.3214,b:0.8860} }
+  },
+  // 十二 文化・交流・公益施設
+  // 第1類（公民館・集会場・コミュニティセンター等）
+  // 第2類（映画館・劇場・美術館・博物館・図書館・研修所・警察署・消防署等）
+  '12-1': { minA:150,  maxA:10000,
+    d:{ g:{a:4.8697,b:0.9197}, s:{a:2.8735,b:0.8052}, e:{a:1.0305,b:0.9969} },
+    m:{ g:{a:6.2133,b:0.7647}, s:{a:1.5683,b:0.7292}, e:{a:0.6125,b:0.9294} }
+  },
+  '12-2': { minA:300,  maxA:30000,
+    d:{ g:{a:5.8402,b:0.9197}, s:{a:3.1301,b:0.8052}, e:{a:1.0585,b:0.9969} },
+    m:{ g:{a:6.2133,b:0.7647}, s:{a:1.5683,b:0.7292}, e:{a:0.6125,b:0.9294} }
+  }
+  // 十三〜十五（戸建住宅）は官庁施設の設計業務等積算要領の適用外のため係数なし
+};
+
+// multiRange エントリから面積に対応する範囲の係数を解決するヘルパー
+// 戻り値: { d, m, linear } または null（適用外面積）
+function resolveCoeff(entry, area) {
+  if (!entry.multiRange) return { d:entry.d, m:entry.m, linear:false };
+  const r = entry.ranges.find(r => area >= r.minA && area <= r.maxA);
+  if (!r) return null;
+  return { d:r.d, m:r.m, linear:r.linear };
+}
+
+// 告示第8号 別添二 番号ごとの用途等類型（第1類のみ or 第1類+第2類）
+const CLASSES = {
+  '1' :['1','2'], '2' :['1','2'], '3' :['1','2'], '4' :['1','2'],
+  '5' :['1','2'], '6' :['1'],    '7' :['1'],    '8' :['1','2'],
+  '9' :['1','2'], '10':['1','2'],'11':['1'],    '12':['1','2'],
+  '13':['1'],    '14':['1'],    '15':['1']
+};
+
+// 第1類・第2類の用途説明
+const CLASS_DESCS = {
+  '1' :{ '1':'第１類：車庫・倉庫・立体駐車場等（標準的なもの）', '2':'第２類：立体倉庫・物流ターミナル等（複雑なもの）' },
+  '2' :{ '1':'第１類：組立工場等（標準的なもの）', '2':'第２類：化学工場・薬品工場・特殊設備を付帯する工場等' },
+  '3' :{ '1':'第１類：体育館・武道館・スポーツジム等', '2':'第２類：屋内プール・スタジアム等' },
+  '4' :{ '1':'第１類：事務所等（標準的なもの）', '2':'第２類：銀行・本社ビル・庁舎等（複雑なもの）' },
+  '5' :{ '1':'第１類：店舗・料理店・スーパーマーケット等', '2':'第２類：百貨店・ショッピングセンター等' },
+  '6' :{ '1':'第１類：公営住宅・社宅・共同住宅・寄宿舎等' },
+  '7' :{ '1':'第１類：幼稚園・小学校・中学校・高等学校等' },
+  '8' :{ '1':'第１類：大学・専門学校等（標準的なもの）', '2':'第２類：実験施設付大学・専門学校・研究所等' },
+  '9' :{ '1':'第１類：ホテル・旅館等（標準的なもの）', '2':'第２類：宴会場等を有するホテル・保養所等' },
+  '10':{ '1':'第１類：病院・診療所等（標準的なもの）', '2':'第２類：総合病院等（複雑なもの）' },
+  '11':{ '1':'第１類：保育園・老人ホーム・老人保健施設・多機能福祉施設等' },
+  '12':{ '1':'第１類：公民館・集会場・コミュニティセンター等', '2':'第２類：映画館・劇場・美術館・博物館・図書館・研修所・警察署・消防署等' },
+  '13':{ '1':'戸建住宅（詳細設計及び構造計算を必要とするもの）' },
+  '14':{ '1':'戸建住宅（詳細設計を必要とするもの）' },
+  '15':{ '1':'その他の戸建住宅' }
+};
+
+// 番号の日本語名
+const NO_NAMES = {
+  '1' :'一 物流施設（車庫・倉庫・立体駐車場等）',
+  '2' :'二 生産施設（工場等）',
+  '3' :'三 運動施設（体育館・武道館等）',
+  '4' :'四 業務施設（事務所・庁舎・銀行等）',
+  '5' :'五 商業施設（店舗・百貨店等）',
+  '6' :'六 共同住宅（公営住宅・社宅・寄宿舎等）',
+  '7' :'七 教育施設（幼稚園・小中高等学校等）',
+  '8' :'八 専門的教育・研究施設（大学・研究所等）',
+  '9' :'九 宿泊施設（ホテル・旅館・保養所等）',
+  '10':'十 医療施設（病院・診療所・総合病院等）',
+  '11':'十一 福祉・厚生施設（保育園・老人ホーム等）',
+  '12':'十二 文化・交流・公益施設（公民館・劇場・美術館等）',
+  '13':'十三 戸建住宅（詳細設計及び構造計算を必要とするもの）',
+  '14':'十四 戸建住宅（詳細設計を必要とするもの）',
+  '15':'十五 その他の戸建住宅'
+};
+
+// ============================================================
+// 別表2-2 設計業務細分率（第1類/第2類 × 基本設計/実施設計計）
+// ============================================================
+const DESIGN_RATES = {
+  '1': { basic:{ g:0.29, s:0.23, e:0.22 }, impl:{ g:0.71, s:0.77, e:0.78 } },
+  '2': { basic:{ g:0.29, s:0.25, e:0.27 }, impl:{ g:0.71, s:0.75, e:0.73 } }
+};
+
+// ============================================================
+// 別表2-3 工事監理業務細分率
+// ============================================================
+const SUPERVISION_RATES = {
+  main:  { g:0.73, s:0.76, e:0.74 },
+  other: { g:0.27, s:0.24, e:0.26 }
+};
+
+// ============================================================
+// 別表２－２ 設計業務細分率
+// rates: [第1類総合, 第1類構造, 第1類設備, 第2類総合, 第2類構造, 第2類設備]
+// [大項目 or null, 細項目 or '', rates]
+// ============================================================
+const SAIBUN_22 = {
+  basic: [
+    ['(1) 設計条件等の整理',   '(i) 条件整理',                              [0.03,0.02,0.02,0.03,0.03,0.03]],
+    [null,                     '(ii) 設計条件の変更等の場合の協議',           [0.01,0.01,0.01,0.01,0.01,0.01]],
+    ['(2) 法令上の諸条件の調査及び関係機関との打合せ','(i) 法令上の諸条件の調査',[0.02,0.01,0.01,0.02,0.01,0.02]],
+    [null,                     '(ii) 建築確認申請に係る関係機関との打合せ',   [0.01,0.01,0.01,0.01,0.01,0.01]],
+    ['(3) 上下水道・ガス・電力・通信等の調査及び関係機関との打合せ','',       [0.01,0.01,0.01,0.01,0.01,0.01]],
+    ['(4) 基本設計方針の策定', '(i) 総合検討',                               [0.06,0.05,0.05,0.06,0.05,0.05]],
+    [null,                     '(ii) 基本設計方針の策定及び建築主への説明',   [0.02,0.02,0.02,0.02,0.02,0.02]],
+    ['(5) 基本設計図書の作成', '',                                            [0.09,0.07,0.06,0.09,0.08,0.07]],
+    ['(6) 概算工事費の検討',   '',                                            [0.03,0.02,0.02,0.03,0.02,0.02]],
+    ['(7) 基本設計内容の建築主への説明等','',                                 [0.01,0.01,0.01,0.01,0.01,0.01]],
+  ],
+  impl: [
+    ['(1) 要求の確認',         '(i) 建築主の要求等の確認',                   [0.03,0.03,0.03,0.03,0.03,0.03]],
+    [null,                     '(ii) 設計条件の変更等の場合の協議',           [0.01,0.01,0.02,0.01,0.01,0.01]],
+    ['(2) 法令上の諸条件の調査及び関係機関との打合せ','(i) 法令上の諸条件の調査',[0.02,0.01,0.02,0.02,0.01,0.02]],
+    [null,                     '(ii) 建築確認申請に係る関係機関との打合せ',   [0.01,0.02,0.02,0.01,0.02,0.02]],
+    ['(3) 実施設計方針の策定', '(i) 総合検討',                               [0.07,0.08,0.07,0.07,0.08,0.07]],
+    [null,                     '(ii) 実施設計のための基本事項の確定',         [0.03,0.03,0.04,0.03,0.03,0.03]],
+    [null,                     '(iii) 実施設計方針の策定及び建築主への説明',  [0.02,0.02,0.03,0.02,0.02,0.03]],
+    ['(4) 実施設計図書の作成', '(i) 実施設計図書の作成',                     [0.30,0.33,0.30,0.30,0.32,0.28]],
+    [null,                     '(ii) 建築確認申請図書の作成',                 [0.04,0.05,0.04,0.05,0.04,0.04]],
+    ['(5) 概算工事費の検討',   '',                                            [0.03,0.04,0.04,0.03,0.04,0.04]],
+    ['(6) 実施設計内容の建築主への説明等','',                                 [0.02,0.02,0.03,0.02,0.02,0.03]],
+    ['【設計意図の伝達】(1) 設計意図を正確に伝えるための質疑応答、説明等','', [0.07,0.06,0.07,0.07,0.06,0.07]],
+    ['(2) 工事材料・設備機器等の選定に関する設計意図の観点からの検討、助言等','', [0.06,0.06,0.06,0.06,0.05,0.06]],
+  ],
+};
+
+// ============================================================
+// 別表２－３ 工事監理業務細分率
+// rates: [総合, 構造, 設備]  （類型区別なし）
+// rates=null のとき → セクション見出し行
+// ============================================================
+const SAIBUN_23 = [
+  ['工事監理に係る業務細分率',                                          null,  null],
+  ['(1) 工事監理方針の説明等',   '(i) 工事監理方針の説明',              null, [0.02,0.01,0.02]],
+  [null,                         '(ii) 工事監理方法変更の場合の協議',    null, [0.01,0.01,0.01]],
+  ['(2) 設計図書の内容の把握等', '(i) 設計図書の内容の把握',             null, [0.08,0.08,0.08]],
+  [null,                         '(ii) 質疑書の検討',                    null, [0.08,0.09,0.07]],
+  ['(3) 設計図書に照らした施工図等の検討及び報告','(i) 施工図等の検討及び報告', null, [0.19,0.19,0.20]],
+  [null,                         '(ii) 工事材料・設備機器等の検討及び報告', null, [0.06,0.04,0.06]],
+  ['(4) 工事と設計図書との照合及び確認',               '',               null, [0.15,0.22,0.18]],
+  ['(5) 工事と設計図書との照合及び確認の結果報告等',   '',               null, [0.07,0.07,0.06]],
+  ['(6) 工事監理報告書等の提出',                       '',               null, [0.07,0.05,0.06]],
+  ['工事監理に関するその他の業務細分率',                                 null,  null],
+  ['(1) 請負代金内訳書の検討及び報告',                 '',               null, [0.02,0.02,0.02]],
+  ['(2) 工程表の検討及び報告',                         '',               null, [0.04,0.02,0.03]],
+  ['(3) 設計図書に定めのある施工計画の検討及び報告',   '',               null, [0.07,0.05,0.07]],
+  ['(4) 工事と工事請負契約との照合・確認・報告等','(i) 工事と工事請負契約との照合、確認、報告', null, [0.02,0.02,0.02]],
+  [null,                         '(ii) 工事請負契約に定められた指示、検査等',  null, [0.03,0.04,0.03]],
+  [null,                         '(iii) 工事が設計図書に適合しない疑いがある場合の破壊検査', null, [0.00,0.01,0.00]],
+  ['(5) 工事請負契約の目的物の引渡しの立会い',         '',               null, [0.02,0.02,0.02]],
+  ['(6) 関係機関の検査の立会等',                       '',               null, [0.04,0.03,0.04]],
+  ['(7) 工費支払いの審査',       '(i) 工事期間中の工事費支払い請求の審査', null, [0.02,0.02,0.02]],
+  [null,                         '(ii) 最終支払い請求の審査',             null, [0.01,0.01,0.01]],
+];
+
+// SAIBUN_23 の rates は配列の第4要素（index 3）に格納
+// ※ SAIBUN_22 は [group, item, rates(6)] の3要素
+// ※ SAIBUN_23 は [group, item, null, rates(3)] の4要素（見出し行は rates(3)=null）
+
+// ============================================================
+// UI ヘルパー
+// ============================================================
+function onBuildingNoChange() {
+  const no = document.getElementById('buildingNo').value;
+  const classRow = document.getElementById('classRow');
+  const classSelect = document.getElementById('buildingClass');
+
+  if (!no) { classRow.style.display='none'; clearResult(); return; }
+
+  const classes = CLASSES[no];
+  if (classes.length === 1) {
+    classRow.style.display = 'none';
+    classSelect.value = '1';
+  } else {
+    classRow.style.display = 'block';
+    const descs = CLASS_DESCS[no] || {};
+    const opt1 = descs['1'] || '第１類';
+    const opt2 = descs['2'] || '第２類';
+    classSelect.innerHTML = `<option value="1">${opt1}</option><option value="2">${opt2}</option>`;
+    classSelect.value = '1';
+  }
+  onClassChange();
+}
+
+function onClassChange() {
+  updateCoeffDisplay();
+  clearResult();
+}
+
+function onInputChange() {
+  updateCoeffDisplay();
+  clearResult();
+}
+
+// 難易度係数プリセット選択 → 係数入力欄に反映
+function onDiffPre(dom, phase) {
+  const sel = document.getElementById('diff_' + dom + '_' + phase + '_pre');
+  const inp = document.getElementById('diff_' + dom + '_' + phase);
+  if (sel.value !== 'custom') inp.value = sel.value;
+  clearResult();
+}
+// 係数を直接入力 → プリセット選択を「自由入力」に
+function onDiffCustom(dom, phase) {
+  const sel = document.getElementById('diff_' + dom + '_' + phase + '_pre');
+  sel.value = 'custom';
+  clearResult();
+}
+// 難易度係数を取得（DOM: 'g'|'s'|'e', phase: 'd'|'m'）
+function getDiff(dom, phase) {
+  const v = parseFloat(document.getElementById('diff_' + dom + '_' + phase).value);
+  return (!isNaN(v) && v > 0) ? v : 1.0;
+}
+
+function getKey() {
+  const no = document.getElementById('buildingNo').value;
+  const cl = document.getElementById('buildingClass').value || '1';
+  if (!no) return null;
+  return no + '-' + cl;
+}
+
+function updateCoeffDisplay() {
+  const key = getKey();
+  const disp = document.getElementById('coeffDisplay');
+  const warn = document.getElementById('areaWarn');
+  const classDesc = document.getElementById('classDesc');
+
+  if (!key) { disp.style.display='none'; warn.style.display='none'; return; }
+
+  // 十三〜十五（戸建住宅）は官庁施設積算要領の適用外
+  if (!COEFF[key]) {
+    disp.style.display = 'block';
+    disp.innerHTML = '<strong>※ 告示第８号 十三〜十五（戸建住宅）は官庁施設の設計業務等積算要領の適用外です。</strong><br>本ツールでは算定できません。';
+    warn.style.display = 'none';
+    if (classDesc) classDesc.textContent = '';
+    return;
+  }
+
+  const c = COEFF[key];
+  const area = parseFloat(document.getElementById('area').value);
+  const no = document.getElementById('buildingNo').value;
+  const cl = document.getElementById('buildingClass').value || '1';
+  const noName = NO_NAMES[no] || no;
+
+  if (classDesc) {
+    classDesc.textContent = '適用規模：' + c.minA.toLocaleString() + '㎡ ≤ S ≤ ' + c.maxA.toLocaleString() + '㎡';
+  }
+
+  if (area && (area < c.minA || area > c.maxA)) {
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
+
+  // multiRange の場合は入力面積に対応する範囲の係数を表示する
+  let dispD, dispM, dispLinear = false, dispRangeNote = '';
+  if (c.multiRange) {
+    const resolved = resolveCoeff(c, area || c.minA);
+    if (resolved) {
+      dispD = resolved.d; dispM = resolved.m; dispLinear = resolved.linear;
+      if (dispLinear) dispRangeNote = '　<span style="color:#e67e22">【線形式: A = a×S + b】</span>';
+    } else {
+      dispD = c.ranges[0].d; dispM = c.ranges[0].m;
+    }
+  } else {
+    dispD = c.d; dispM = c.m;
+  }
+
+  disp.style.display = 'block';
+  if (dispLinear) {
+    disp.innerHTML =
+      `<strong>設計係数（${noName} 第${cl}類）</strong>${dispRangeNote}<br>` +
+      `総合: a=${dispD.g.a}, b=${dispD.g.b}　構造: a=${dispD.s.a}, b=${dispD.s.b}　設備: a=${dispD.e.a}, b=${dispD.e.b}<br>` +
+      `<strong>工事監理係数</strong>　` +
+      `総合: a=${dispM.g.a}, b=${dispM.g.b}　構造: a=${dispM.s.a}, b=${dispM.s.b}　設備: a=${dispM.e.a}, b=${dispM.e.b}<br>` +
+      `適用規模：${c.minA.toLocaleString()}㎡ ≤ S ≤ ${c.maxA.toLocaleString()}㎡`;
+  } else {
+    disp.innerHTML =
+      `<strong>設計係数（${noName} 第${cl}類）</strong>　` +
+      `総合: a=${dispD.g.a}, b=${dispD.g.b}　構造: a=${dispD.s.a}, b=${dispD.s.b}　設備: a=${dispD.e.a}, b=${dispD.e.b}<br>` +
+      `<strong>工事監理係数</strong>　` +
+      `総合: a=${dispM.g.a}, b=${dispM.g.b}　構造: a=${dispM.s.a}, b=${dispM.s.b}　設備: a=${dispM.e.a}, b=${dispM.e.b}<br>` +
+      `適用規模：${c.minA.toLocaleString()}㎡ ≤ S ≤ ${c.maxA.toLocaleString()}㎡`;
+  }
+}
+
+function clearResult() {
+  document.getElementById('resultSection').classList.remove('visible');
+  document.getElementById('excelBtn').style.display = 'none';
+  document.getElementById('wordBtn').style.display  = 'none';
+}
+
+// ============================================================
+// 計算エンジン
+// ============================================================
+let lastResult = null;
+
+function calculate() {
+  const key = getKey();
+  if (!key) {
+    alert('建物の類型を選択してください。'); return;
+  }
+  if (!COEFF[key]) {
+    alert('選択した建物の類型（十三〜十五 戸建住宅）は官庁施設の設計業務等積算要領の適用外のため、本ツールでは算定できません。'); return;
+  }
+  const area = parseFloat(document.getElementById('area').value);
+  if (!area || area <= 0) {
+    alert('延べ床面積を入力してください。'); return;
+  }
+  // 難易度係数は分野・業務種別ごとに取得（getDiff を使用）
+  const unitPrice   = parseFloat(document.getElementById('unitPrice').value)   || 42500;
+  const shohiRate   = parseFloat(document.getElementById('shohiRate').value)   / 100; // 諸費用率
+  const gijutsuRate = parseFloat(document.getElementById('gijutsuRate').value) / 100; // 技術費率
+  const taxR        = parseFloat(document.getElementById('taxRate').value)     / 100;
+  const no    = document.getElementById('buildingNo').value;
+  const cl    = document.getElementById('buildingClass').value || '1';
+  const coeff = COEFF[key];
+  const rates = DESIGN_RATES[cl] || DESIGN_RATES['1'];
+
+  // フェーズ選択
+  const useBasic      = document.getElementById('phaseBasic').checked;
+  const useImpl       = document.getElementById('phaseImpl').checked;
+  const useRenovation = document.getElementById('phaseRenovation').checked;
+  const useSup        = document.getElementById('phaseSupervision').checked;
+
+  if (!useBasic && !useImpl && !useRenovation && !useSup) {
+    alert('対象フェーズを1つ以上選択してください。'); return;
+  }
+
+  // 業務分野
+  const useG = document.getElementById('catGeneral').checked;
+  const useS = document.getElementById('catStructure').checked;
+  const useE = document.getElementById('catEquipment').checked;
+
+  if (!useG && !useS && !useE) {
+    alert('業務分野を1つ以上選択してください。'); return;
+  }
+
+  const domains = [];
+  if (useG) domains.push({ key:'g', label:'総合（建築）' });
+  if (useS) domains.push({ key:'s', label:'構造' });
+  if (useE) domains.push({ key:'e', label:'設備' });
+
+  const rows = [];
+  let totalDirectCost = 0;
+
+  // 面積に対応する係数範囲を解決（multiRange 対応）
+  const resolved = resolveCoeff(coeff, area);
+  if (!resolved) {
+    alert('入力された延べ床面積は選択した建物類型の適用範囲外です。\n面積または建物類型を見直してください。');
+    return;
+  }
+  const isLinear = resolved.linear;
+
+  // 各フェーズの計算ヘルパー（phaseType: 'd'=設計 / 'm'=監理）
+  function addRows(phaseLabel, coeffSet, rateObj, phaseType) {
+    for (const dom of domains) {
+      const c = coeffSet[dom.key];
+      const A = isLinear ? (c.a * area + c.b) : (c.a * Math.pow(area, c.b));
+      const rate = (typeof rateObj === 'number') ? rateObj : rateObj[dom.key];
+      const difficulty = getDiff(dom.key, phaseType);
+      const hours = A * rate * difficulty;
+      const days  = hours / 7;
+      const cost  = Math.round(days * unitPrice);
+      totalDirectCost += cost;
+      rows.push({
+        phase: phaseLabel, domain: dom.label,
+        a: c.a, b: c.b, linear: isLinear,
+        A: Math.round(A * 10) / 10,
+        rate, difficulty,
+        hours: Math.round(hours * 10) / 10,
+        days:  Math.round(days  * 10) / 10,
+        cost
+      });
+    }
+  }
+
+  if (useBasic)      addRows('基本設計',                    resolved.d, rates.basic, 'd');
+  if (useImpl)       addRows('実施設計（設計意図伝達含む）',  resolved.d, rates.impl,  'd');
+  if (useRenovation) addRows('診断改修設計',                 resolved.d, 1.0,         'd');
+  if (useSup)        addRows('工事監理業務',                 resolved.m, 1.0,         'm');
+
+  // 費用計算（建築設計方式）
+  // ② 諸費用 = ① 直接人件費 × 諸費用率
+  const shohi       = Math.round(totalDirectCost * shohiRate);
+  // ③ 技術費 = (① + ②) × 技術費率
+  const gijutsu     = Math.round((totalDirectCost + shohi) * gijutsuRate);
+  // 計（税抜）= ① + ② + ③
+  const genka       = totalDirectCost + shohi + gijutsu;
+  const tax         = Math.round(genka * taxR);
+  const total       = genka + tax;
+
+  // 結果保存
+  lastResult = {
+    rows, totalDirectCost, shohi, gijutsu, genka, tax, total,
+    shohiRate, gijutsuRate, taxR,
+    area, unitPrice, key, no, cl,
+    diffMatrix: { g_d:getDiff('g','d'), g_m:getDiff('g','m'),
+                  s_d:getDiff('s','d'), s_m:getDiff('s','m'),
+                  e_d:getDiff('e','d'), e_m:getDiff('e','m') },
+    projectName: document.getElementById('projectName').value,
+    client: document.getElementById('client').value,
+    estimateDate: document.getElementById('estimateDate').value,
+    designer: document.getElementById('designer').value,
+    noteText: document.getElementById('noteText').value
+  };
+
+  renderResult(lastResult);
+  document.getElementById('resultSection').classList.add('visible');
+  document.getElementById('excelBtn').style.display = 'inline-block';
+  document.getElementById('wordBtn').style.display  = 'inline-block';
+  document.getElementById('resultSection').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function fmt(n) { return Math.round(n).toLocaleString(); }
+
+function renderResult(r) {
+  // info bar
+  const infoEl = document.getElementById('resultInfo');
+  const noName = NO_NAMES[r.no] || '（選択中）';
+  const dm = r.diffMatrix;
+  infoEl.innerHTML =
+    `<strong>${noName} ／ 第${r.cl}類</strong>　延べ床面積 S = ${r.area.toLocaleString()}㎡　` +
+    `技師C単価 = ${fmt(r.unitPrice)}円/人・日　` +
+    `<span style="font-size:10px;color:#666;">難易度係数（設計）総合${dm.g_d}/構造${dm.s_d}/設備${dm.e_d}　` +
+    `（監理）総合${dm.g_m}/構造${dm.s_m}/設備${dm.e_m}</span>`;
+
+  // result table body
+  const tbody = document.getElementById('resultBody');
+  tbody.innerHTML = '';
+  r.rows.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td><span class="phase-label">${row.phase}</span></td>` +
+      `<td><span class="domain-label">${row.domain}</span></td>` +
+      `<td class="num">${row.a}</td>` +
+      `<td class="num">${row.b}</td>` +
+      `<td class="num">${fmt(row.A)}</td>` +
+      `<td class="num">${row.rate}</td>` +
+      `<td class="num">${row.difficulty}</td>` +
+      `<td class="num">${fmt(row.hours)}</td>` +
+      `<td class="num">${row.days.toFixed(1)}</td>` +
+      `<td class="num">${fmt(row.cost)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // subtotal row
+  const stTr = document.createElement('tr');
+  stTr.className = 'subtotal';
+  const totalDays = r.rows.reduce((s, x) => s + x.days, 0);
+  stTr.innerHTML =
+    `<td colspan="8" style="text-align:right;">直接人件費 合計</td>` +
+    `<td class="num">${totalDays.toFixed(1)}</td>` +
+    `<td class="num">${fmt(r.totalDirectCost)} 円</td>`;
+  tbody.appendChild(stTr);
+
+  // fee table
+  const feeEl    = document.getElementById('feeTable');
+  const shohiPct   = Math.round(r.shohiRate   * 100 * 10) / 10;
+  const gijutsuPct = Math.round(r.gijutsuRate * 100 * 10) / 10;
+  const taxPct     = Math.round(r.taxR        * 100 * 10) / 10;
+  feeEl.innerHTML = `
+    <table class="result-table" style="max-width:560px;">
+      <tr><td>① 直接人件費</td><td class="num">${fmt(r.totalDirectCost)} 円</td></tr>
+      <tr class="fee-row"><td>② 諸費用（①×${shohiPct}%）</td><td class="num">${fmt(r.shohi)} 円</td></tr>
+      <tr class="fee-row"><td>③ 技術費（(①＋②)×${gijutsuPct}%）</td><td class="num">${fmt(r.gijutsu)} 円</td></tr>
+      <tr class="subtotal"><td>計（税抜）　①＋②＋③</td><td class="num">${fmt(r.genka)} 円</td></tr>
+      <tr class="tax-row"><td>消費税（${taxPct}%）</td><td class="num">${fmt(r.tax)} 円</td></tr>
+    </table>`;
+
+  document.getElementById('totalHighlight').innerHTML =
+    `業務費 合計（税込）<small>${r.projectName || '（業務名未入力）'}</small>` +
+    `<div style="font-size:24px; margin-top:6px;">¥ ${fmt(r.total)} 円</div>`;
+}
+
+// ============================================================
+// Excel 出力（ExcelJS ── 帳票テンプレート流し込み方式）
+// ============================================================
+async function exportExcel() {
+  if (!lastResult) { alert('先に計算を実行してください。'); return; }
+  if (typeof ExcelJS === 'undefined') { alert('ExcelJSが読み込まれていません。インターネット接続を確認してください。'); return; }
+
+  const r        = lastResult;
+  const noName   = NO_NAMES[r.no] || '';
+  const shohiPct   = Math.round(r.shohiRate   * 100);
+  const gijutsuPct = Math.round(r.gijutsuRate * 100);
+  const taxPct     = Math.round(r.taxR        * 100);
+  const clIdx      = (r.cl === '2') ? 3 : 0;
+  const fmtN = n => Math.round(n).toLocaleString();
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = '官庁施設設計業務等見積算定ツール';
+  wb.created = new Date();
+  const MR = 'メイリオ';
+
+  // ---------- 共通ユーティリティ ----------
+  function bAll(w = 'thin') {
+    const s = { style: w };
+    return { top: s, bottom: s, left: s, right: s };
+  }
+  function sc(ws, addr, value, o = {}) {
+    const cell = ws.getCell(addr);
+    if (value !== null && value !== undefined) cell.value = value;
+    cell.font = { name: MR, size: o.sz || 11, bold: !!o.bold,
+                  ...(o.color ? { color: { argb: 'FF' + o.color } } : {}) };
+    if (o.align)  cell.alignment = o.align;
+    if (o.border) cell.border    = o.border;
+    if (o.fill)   cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + o.fill } };
+    if (o.numFmt) cell.numFmt    = o.numFmt;
+  }
+  function pageSetup(ws, orient, margins) {
+    ws.pageSetup = {
+      paperSize: 9, orientation: orient,
+      fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: margins || { left:0.5, right:0.5, top:0.75, bottom:0.75, header:0.3, footer:0.3 }
+    };
+    ws.views = [{ showGridLines: false }];
+  }
+  function getDays(phaseLbl, domKey) {
+    const lbl = domKey==='g'?'総合（建築）':domKey==='s'?'構造':'設備';
+    const found = r.rows.find(x => x.phase === phaseLbl && x.domain === lbl);
+    return found ? found.days : 0;
+  }
+
+  // ================================================================
+  // Sheet 1 ── 表紙
+  // ================================================================
+  {
+    const ws = wb.addWorksheet('表紙');
+    pageSetup(ws, 'portrait', { left:0.7, right:0.7, top:1.0, bottom:1.0, header:0.3, footer:0.3 });
+    ws.printArea = 'A1:F22';
+
+    [6, 18, 20, 20, 18, 20].forEach((w, i) =>
+      ws.getColumn(i + 1).width = w);
+    [15,15,70,15,26,15,18,18,18,15,26,15,24,15,18,40,18,15,18,18,18,15].forEach((h, i) =>
+      ws.getRow(i + 1).height = h);
+
+    ws.mergeCells('A3:F3');
+    sc(ws,'A3','見　　積　　書',
+      {sz:28, bold:true, align:{horizontal:'center',vertical:'middle'}});
+
+    ws.mergeCells('A5:D5');
+    sc(ws,'A5',(r.client||'　　　　　')+'　御中',
+      {sz:14, align:{horizontal:'left',vertical:'middle'}});
+
+    ws.mergeCells('A7:F7');
+    sc(ws,'A7','　上記のとおり御見積り申し上げます。',
+      {sz:12, align:{horizontal:'left',vertical:'middle'}});
+
+    sc(ws,'F8', r.estimateDate||'', {sz:11, align:{horizontal:'right',vertical:'middle'}});
+    sc(ws,'F9', r.designer||'',     {sz:11, align:{horizontal:'right',vertical:'middle'}});
+
+    ws.mergeCells('A11:F11');
+    sc(ws,'A11','記',{sz:14,bold:true,align:{horizontal:'center',vertical:'middle'}});
+
+    ws.mergeCells('A13:F13');
+    sc(ws,'A13','業　務　名　称　：　'+(r.projectName||''),
+      {sz:12,bold:true,align:{horizontal:'left',vertical:'middle'}});
+
+    ws.mergeCells('A15:F15');
+    sc(ws,'A15','金　　　　　額',
+      {sz:12,align:{horizontal:'center',vertical:'middle'}});
+
+    ws.mergeCells('A16:F16');
+    sc(ws,'A16','¥　'+fmtN(r.total)+'　円',
+      {sz:22,bold:true,align:{horizontal:'center',vertical:'middle'}});
+
+    ws.mergeCells('A17:F17');
+    sc(ws,'A17','（消費税'+taxPct+'%込み）',
+      {sz:11,align:{horizontal:'center',vertical:'middle'}});
+
+    ws.mergeCells('A19:F19');
+    sc(ws,'A19','有効期限：　　　　年　　月　　日',
+      {sz:11,align:{horizontal:'left',vertical:'middle'}});
+
+    ws.mergeCells('A21:F21');
+    sc(ws,'A21','摘　要：'+(r.noteText||'別紙積算のとおり'),
+      {sz:11,align:{horizontal:'left',vertical:'middle'}});
+  }
+
+  // ================================================================
+  // Sheet 2 ── 見積書（建築設計）
+  // ================================================================
+  {
+    const ws = wb.addWorksheet('見積書（建築設計）');
+    pageSetup(ws, 'portrait');
+
+    [8, 22, 40, 8, 8, 16, 18].forEach((w, i) =>
+      ws.getColumn(i + 1).width = w);
+
+    // タイトル
+    ws.mergeCells('A1:G1');
+    sc(ws,'A1','見積書（建築設計）',
+      {sz:16,bold:true,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(1).height = 28;
+
+    ws.mergeCells('A2:G2');
+    sc(ws,'A2','業務名称：'+(r.projectName||''),
+      {sz:11,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(2).height = 18;
+
+    ws.mergeCells('A3:G3');
+    sc(ws,'A3','建物類型：'+noName+'　第'+r.cl+'類　　延べ床面積：S = '+r.area.toLocaleString()+' ㎡',
+      {sz:10,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(3).height = 16;
+    ws.getRow(4).height = 8;
+
+    // テーブルヘッダー
+    ws.getRow(5).height = 24;
+    ['番号','名　称','摘　要','数量','単位','単　価','金　額（円）'].forEach((h, i) => {
+      const addr = 'ABCDEFG'[i] + '5';
+      sc(ws, addr, h, { sz:11, bold:true,
+        align:{horizontal:'center',vertical:'middle'},
+        border:bAll('medium'), fill:'D0D8E8' });
+    });
+
+    // 業務名行
+    ws.getRow(6).height = 18;
+    ws.mergeCells('B6:G6');
+    sc(ws,'A6','', {border:bAll()});
+    sc(ws,'B6', r.projectName||'',
+      {sz:11,bold:true,align:{horizontal:'left',vertical:'middle'},border:bAll()});
+
+    // データ行
+    const dataRows = [
+      ['１','直接人件費','基本設計・実施設計（建築設計）',1,'式','',r.totalDirectCost],
+      ['２','直接経費','（別途積算による）',1,'式','',''],
+      ['３','諸費用','直接人件費×'+shohiPct+'％',1,'式','',r.shohi],
+      ['４','技術費','（直接人件費＋諸費用）×'+gijutsuPct+'％',1,'式','',r.gijutsu],
+    ];
+    let ri = 7;
+    dataRows.forEach(d => {
+      ws.getRow(ri).height = 20;
+      d.forEach((v, i) => {
+        sc(ws, 'ABCDEFG'[i]+ri, v, {
+          sz: 11,
+          align: i===0 ? {horizontal:'center',vertical:'middle'}
+               : (i===3||i===6) ? {horizontal:'right',vertical:'middle'}
+               : {horizontal:'left',vertical:'middle'},
+          border: bAll(),
+          numFmt: (i===6 && v!=='') ? '#,##0' : undefined
+        });
+      });
+      ri++;
+    });
+
+    // 計・消費税・合計
+    const totals = [
+      { label:'　　計（税抜）',     val:r.genka, fill:'EEF4FF', bold:true  },
+      { label:'消費税（'+taxPct+'％）', val:r.tax,  fill:'F5F5F5', bold:false },
+      { label:'　　合　計（税込）', val:r.total, fill:'C8D8F0', bold:true  },
+    ];
+    totals.forEach(t => {
+      ws.getRow(ri).height = 22;
+      'ABCDEFG'.split('').forEach((col, i) => {
+        sc(ws, col+ri,
+          i===1 ? t.label : i===6 ? t.val : '',
+          { sz:11, bold:t.bold,
+            align: (i===1||i===6) ? {horizontal:'right',vertical:'middle'}
+                                  : {horizontal:'center',vertical:'middle'},
+            border: bAll(), fill: t.fill,
+            numFmt: i===6 ? '#,##0' : undefined });
+      });
+      ri++;
+    });
+
+    // 注記
+    ri++;
+    ws.mergeCells('A'+ri+':G'+ri);
+    sc(ws,'A'+ri,'※ 直接人件費の算出根拠は別紙「直接人件費内訳書」のとおり',
+      {sz:10,align:{horizontal:'left',vertical:'middle'}});
+    ri++;
+    ws.mergeCells('A'+ri+':G'+ri);
+    sc(ws,'A'+ri,'※ 技師C 日額単価：'+fmtN(r.unitPrice)+' 円/人・日（令和8年度）',
+      {sz:10,align:{horizontal:'left',vertical:'middle'}});
+
+    ws.printArea = 'A1:G'+ri;
+  }
+
+  // ================================================================
+  // Sheet 3 ── 直接人件費内訳書（業務量計算書）
+  // ================================================================
+  {
+    const ws = wb.addWorksheet('直接人件費内訳書');
+    pageSetup(ws, 'landscape');
+    [28,14,10,10,16,10,10,16,12,18].forEach((w,i) =>
+      ws.getColumn(i+1).width = w);
+
+    // タイトル
+    ws.mergeCells('A1:J1');
+    sc(ws,'A1','直接人件費内訳書（官庁施設の設計業務等積算要領　令和６年改定）',
+      {sz:13,bold:true,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(1).height = 24;
+
+    ws.mergeCells('A2:J2');
+    sc(ws,'A2','建物の類型：'+noName+'　第'+r.cl+'類　延べ床面積 S = '+r.area.toLocaleString()+' ㎡　難易度係数：'+r.rows[0]?.difficulty??1+'　技師C単価：'+fmtN(r.unitPrice)+' 円/人・日（令和8年度）',
+      {sz:10,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(2).height = 18;
+
+    // ヘッダー行
+    ws.getRow(3).height = 36;
+    ['業務内容','業務分野','係数 a','係数 b','A=a×Sᵇ\n(人・時間)','業務量率','難易度','業務量\n(人・時間)','業務量\n(人・日)','直接人件費\n(円)']
+      .forEach((h, i) => {
+        sc(ws, 'ABCDEFGHIJ'[i]+'3', h, {sz:10,bold:true,
+          align:{horizontal:'center',vertical:'middle',wrapText:true},
+          border:bAll('medium'), fill:'D0D8E8'});
+      });
+
+    // データ行
+    let ri = 4;
+    r.rows.forEach(row => {
+      ws.getRow(ri).height = 18;
+      [row.phase,row.domain,row.a,row.b,row.A,row.rate,row.difficulty,row.hours,
+       Math.round(row.days*10)/10, row.cost].forEach((v, i) => {
+        sc(ws, 'ABCDEFGHIJ'[i]+ri, v, {
+          sz:10,
+          align: i>=2 ? {horizontal:'right',vertical:'middle'}
+                      : {horizontal:'left',vertical:'middle'},
+          border: bAll(),
+          numFmt: i===9 ? '#,##0' : undefined
+        });
+      });
+      ri++;
+    });
+
+    // 合計行
+    const totalDays = r.rows.reduce((s,x) => s+x.days, 0);
+    ws.getRow(ri).height = 22;
+    ws.mergeCells('A'+ri+':H'+ri);
+    sc(ws,'A'+ri,'直接人件費　合　計',
+      {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF'});
+    sc(ws,'I'+ri, Math.round(totalDays*10)/10,
+      {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF'});
+    sc(ws,'J'+ri, r.totalDirectCost,
+      {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF',numFmt:'#,##0'});
+
+    ws.printArea = 'A1:J'+ri;
+  }
+
+  // ================================================================
+  // Sheet 4 ── 内訳細目表（別表2-2 / 2-3 業務細分率）
+  // ================================================================
+  {
+    const ws = wb.addWorksheet('内訳細目表');
+    pageSetup(ws, 'landscape');
+    const DCOLS = 'ABCDEFGHIJKL';
+    [32,34,9,13,15,9,13,15,9,13,15,16].forEach((w,i) =>
+      ws.getColumn(i+1).width = w);
+
+    // タイトル
+    ws.mergeCells('A1:L1');
+    sc(ws,'A1','内訳細目表　（別表２－２・２－３　業務細分率による人工・金額の内訳）',
+      {sz:13,bold:true,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(1).height = 24;
+
+    ws.mergeCells('A2:L2');
+    sc(ws,'A2','建物の類型：'+noName+'　第'+r.cl+'類　延べ床面積 S = '+r.area.toLocaleString()+' ㎡　難易度係数：'+r.rows[0]?.difficulty??1+'　技師C単価：'+fmtN(r.unitPrice)+' 円/人・日',
+      {sz:10,align:{horizontal:'left',vertical:'middle'}});
+    ws.getRow(2).height = 18;
+
+    let ri = 3;
+
+    const COL_HDR = ['大項目','業務内容の項目',
+      '総合\n細分率','総合\n人工\n(人・日)','総合\n金額(円)',
+      '構造\n細分率','構造\n人工\n(人・日)','構造\n金額(円)',
+      '設備\n細分率','設備\n人工\n(人・日)','設備\n金額(円)',
+      '合計金額(円)'];
+
+    // --- 設計業務セクション生成（SAIBUN_22: [group, item, rates(6)]）---
+    function addDesignSection(phaseLbl, defs, ci) {
+      const gD = getDays(phaseLbl,'g'), kD = getDays(phaseLbl,'s'), sD = getDays(phaseLbl,'e');
+      if (gD===0 && kD===0 && sD===0) return;
+
+      // フェーズ見出し
+      ws.getRow(ri).height = 22;
+      ws.mergeCells('A'+ri+':L'+ri);
+      ws.getCell('A'+ri).value     = '■　'+phaseLbl;
+      ws.getCell('A'+ri).font      = {name:MR,size:12,bold:true,color:{argb:'FFFFFFFF'}};
+      ws.getCell('A'+ri).fill      = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1A3A6B'}};
+      ws.getCell('A'+ri).alignment = {horizontal:'left',vertical:'middle'};
+      ri++;
+
+      // ドメイン合計表示
+      ws.getRow(ri).height = 16;
+      ws.mergeCells('A'+ri+':L'+ri);
+      sc(ws,'A'+ri,'　（総合：'+gD.toFixed(1)+'人・日　構造：'+kD.toFixed(1)+'人・日　設備：'+sD.toFixed(1)+'人・日）',
+        {sz:10,align:{horizontal:'left',vertical:'middle'}});
+      ri++;
+
+      // 列ヘッダー
+      ws.getRow(ri).height = 38;
+      COL_HDR.forEach((h,i) =>
+        sc(ws, DCOLS[i]+ri, h, {sz:10,bold:true,
+          align:{horizontal:'center',vertical:'middle',wrapText:true},
+          border:bAll('medium'), fill:'D0D8E8'}));
+      ri++;
+
+      let pTotal = 0, lastGroup = null;
+      for (const [group, item, rates] of defs) {
+        const gr=rates[ci], kr=rates[ci+1], sr=rates[ci+2];
+        const gd=Math.round(gD*gr*100)/100, kd=Math.round(kD*kr*100)/100, sd=Math.round(sD*sr*100)/100;
+        const gc=Math.round(gd*r.unitPrice), kc=Math.round(kd*r.unitPrice), sc2=Math.round(sd*r.unitPrice);
+        const tot=gc+kc+sc2; pTotal+=tot;
+        const grpLabel = (group!==null && group!==lastGroup) ? group : '';
+        if (group!==null) lastGroup=group;
+        ws.getRow(ri).height = 16;
+        [grpLabel,item||'',gr,gd,gc,kr,kd,kc,sr,sd,sc2,tot].forEach((v,i) => {
+          sc(ws, DCOLS[i]+ri, v, {sz:10,
+            align: i>=2?{horizontal:'right',vertical:'middle'}:{horizontal:'left',vertical:'middle',wrapText:false},
+            border:bAll(),
+            numFmt:(i===4||i===7||i===10||i===11)?'#,##0':undefined});
+        });
+        ri++;
+      }
+      // 小計行
+      ws.getRow(ri).height = 20;
+      ws.mergeCells('A'+ri+':K'+ri);
+      sc(ws,'A'+ri,'小　計',
+        {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF'});
+      sc(ws,'L'+ri,pTotal,
+        {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF',numFmt:'#,##0'});
+      ri++; ri++;
+    }
+
+    // --- 工事監理セクション生成（SAIBUN_23: [group, item, null, rates(3)]）---
+    function addSupervisionSection(phaseLbl) {
+      const gD = getDays(phaseLbl,'g'), kD = getDays(phaseLbl,'s'), sD = getDays(phaseLbl,'e');
+      if (gD===0 && kD===0 && sD===0) return;
+
+      ws.getRow(ri).height = 22;
+      ws.mergeCells('A'+ri+':L'+ri);
+      ws.getCell('A'+ri).value     = '■　'+phaseLbl;
+      ws.getCell('A'+ri).font      = {name:MR,size:12,bold:true,color:{argb:'FFFFFFFF'}};
+      ws.getCell('A'+ri).fill      = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1A3A6B'}};
+      ws.getCell('A'+ri).alignment = {horizontal:'left',vertical:'middle'};
+      ri++;
+
+      ws.getRow(ri).height = 16;
+      ws.mergeCells('A'+ri+':L'+ri);
+      sc(ws,'A'+ri,'　（総合：'+gD.toFixed(1)+'人・日　構造：'+kD.toFixed(1)+'人・日　設備：'+sD.toFixed(1)+'人・日）',
+        {sz:10,align:{horizontal:'left',vertical:'middle'}});
+      ri++;
+
+      ws.getRow(ri).height = 38;
+      COL_HDR.forEach((h,i) =>
+        sc(ws, DCOLS[i]+ri, h, {sz:10,bold:true,
+          align:{horizontal:'center',vertical:'middle',wrapText:true},
+          border:bAll('medium'), fill:'D0D8E8'}));
+      ri++;
+
+      let pTotal=0, lastGroup=null;
+      for (const entry of SAIBUN_23) {
+        const [group, item] = entry;
+        const rates = entry[3]; // index 3
+        if (!rates) {
+          ws.getRow(ri).height = 18;
+          ws.mergeCells('A'+ri+':L'+ri);
+          sc(ws,'A'+ri,'◆　'+group,
+            {sz:10,bold:true,align:{horizontal:'left',vertical:'middle'},fill:'E8EDF5'});
+          ri++; continue;
+        }
+        const gr=rates[0],kr=rates[1],sr=rates[2];
+        const gd=Math.round(gD*gr*100)/100,kd=Math.round(kD*kr*100)/100,sd=Math.round(sD*sr*100)/100;
+        const gc=Math.round(gd*r.unitPrice),kc=Math.round(kd*r.unitPrice),sc2=Math.round(sd*r.unitPrice);
+        const tot=gc+kc+sc2; pTotal+=tot;
+        const grpLabel = (group!==null && group!==lastGroup) ? group : '';
+        if (group!==null) lastGroup=group;
+        ws.getRow(ri).height = 16;
+        [grpLabel,item||'',gr,gd,gc,kr,kd,kc,sr,sd,sc2,tot].forEach((v,i) => {
+          sc(ws, DCOLS[i]+ri, v, {sz:10,
+            align: i>=2?{horizontal:'right',vertical:'middle'}:{horizontal:'left',vertical:'middle'},
+            border:bAll(),
+            numFmt:(i===4||i===7||i===10||i===11)?'#,##0':undefined});
+        });
+        ri++;
+      }
+      ws.getRow(ri).height = 20;
+      ws.mergeCells('A'+ri+':K'+ri);
+      sc(ws,'A'+ri,'小　計',
+        {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF'});
+      sc(ws,'L'+ri,pTotal,
+        {sz:11,bold:true,align:{horizontal:'right',vertical:'middle'},border:bAll('medium'),fill:'EEF4FF',numFmt:'#,##0'});
+      ri++; ri++;
+    }
+
+    if (r.rows.some(x=>x.phase==='基本設計'))
+      addDesignSection('基本設計', SAIBUN_22.basic, clIdx);
+    if (r.rows.some(x=>x.phase==='実施設計（設計意図伝達含む）'))
+      addDesignSection('実施設計（設計意図伝達含む）', SAIBUN_22.impl, clIdx);
+    if (r.rows.some(x=>x.phase==='工事監理業務'))
+      addSupervisionSection('工事監理業務');
+
+    ws.printArea = 'A1:L'+ri;
+  }
+
+  // ---------- ファイルダウンロード ----------
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url    = URL.createObjectURL(blob);
+  const link   = document.createElement('a');
+  link.href    = url;
+  const dateStr = r.estimateDate ? r.estimateDate.replace(/[\/\-]/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
+  link.download = '設計費見積書_' + dateStr + '.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+
+// ============================================================
+// Word出力（見積書フォーマット　sample2-(A)準拠）
+// JSZip + Open XML 直接生成方式（外部ライブラリ不要）
+// ============================================================
+async function exportWord() {
+  if (!lastResult) { alert('先に計算を実行してください。'); return; }
+  if (typeof JSZip === 'undefined') { alert('JSZipライブラリが読み込まれていません。インターネット接続を確認してください。'); return; }
+
+  const r = lastResult;
+  const noName    = NO_NAMES[r.no] || '';
+  const shohiPct  = Math.round(r.shohiRate   * 100);
+  const gijuPct   = Math.round(r.gijutsuRate * 100);
+  const taxPct    = Math.round(r.taxR        * 100);
+  const fmtN = n => Math.round(n).toLocaleString();
+
+  // ── OOXML ヘルパー ────────────────────────────────────────
+  const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+  // エスケープ
+  function xe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // 段落 XML
+  function wPar(text, opts={}){
+    const sz   = opts.sz   || 22;
+    const bold = opts.bold ? '<w:b/>' : '';
+    const jc   = opts.align ? `<w:jc w:val="${opts.align}"/>` : '';
+    const sp   = opts.space ? `<w:spacing w:before="${opts.space}" w:after="${opts.space}"/>` : '';
+    return `<w:p><w:pPr>${jc}${sp}</w:pPr>`+
+           `<w:r><w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>`+
+           `<w:rFonts w:ascii="MS Mincho" w:hAnsi="MS Mincho" w:cs="MS Mincho"/></w:rPr>`+
+           `<w:t xml:space="preserve">${xe(text)}</w:t></w:r></w:p>`;
+  }
+
+  // セル XML
+  function wCell(text, opts={}){
+    const sz    = opts.sz   || 20;
+    const bold  = opts.bold ? '<w:b/>' : '';
+    const jc    = opts.align? `<w:jc w:val="${opts.align}"/>` : '';
+    const shade = opts.bg   ? `<w:shd w:val="clear" w:color="auto" w:fill="${opts.bg}"/>` : '';
+    const w     = opts.w    ? `<w:tcW w:w="${opts.w}" w:type="dxa"/>` : '';
+    const border = `<w:tcBorders>`+
+      `<w:top w:val="single" w:sz="4" w:color="888888"/>`+
+      `<w:left w:val="single" w:sz="4" w:color="888888"/>`+
+      `<w:bottom w:val="single" w:sz="4" w:color="888888"/>`+
+      `<w:right w:val="single" w:sz="4" w:color="888888"/>`+
+      `</w:tcBorders>`;
+    const span  = opts.span ? `<w:gridSpan w:val="${opts.span}"/>` : '';
+    return `<w:tc><w:tcPr>${w}${span}${border}${shade}</w:tcPr>`+
+           `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/>${jc}</w:pPr>`+
+           `<w:r><w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>`+
+           `<w:rFonts w:ascii="MS Mincho" w:hAnsi="MS Mincho" w:cs="MS Mincho"/></w:rPr>`+
+           `<w:t xml:space="preserve">${xe(text)}</w:t></w:r></w:p></w:tc>`;
+  }
+
+  // 行 XML
+  function wRow(cells, hdr=false){
+    return `<w:tr>${hdr?'<w:trPr><w:tblHeader/></w:trPr>':''}${cells}</w:tr>`;
+  }
+
+  // テーブル XML
+  function wTable(rows, tblW=9000){
+    return `<w:tbl><w:tblPr>`+
+           `<w:tblW w:w="${tblW}" w:type="dxa"/>`+
+           `<w:tblBorders>`+
+           `<w:insideH w:val="single" w:sz="4" w:color="888888"/>`+
+           `<w:insideV w:val="single" w:sz="4" w:color="888888"/>`+
+           `</w:tblBorders>`+
+           `</w:tblPr>${rows}</w:tbl>`;
+  }
+
+  // ページ区切り
+  const wPageBreak = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+
+  // ── 表紙 ────────────────────────────────────────────────────
+  const coverXml =
+    wPar('', {space:600}) +
+    wPar('見　　積　　書', {sz:40, bold:true, align:'center', space:200}) +
+    wPar('', {space:200}) +
+    wPar((r.client||'　　　　　　') + '　御中', {sz:24}) +
+    wPar('', {space:200}) +
+    wPar('　上記のとおり御見積り申し上げます。', {sz:22}) +
+    wPar('', {space:100}) +
+    wPar('　　　　　　　　　　　　　　　　　　　　　　　　　' + (r.estimateDate||''), {sz:22}) +
+    wPar('　　　　　　　　　　　　　　　　　　　　　' + (r.designer||''), {sz:22, space:400}) +
+    wPar('　　　　記', {sz:28, bold:true, align:'center', space:200}) +
+    wPar('業　務　名　称　：　' + (r.projectName||''), {sz:22, bold:true, space:200}) +
+    wPar('', {space:100}) +
+    wPar('　　　金　　　額', {align:'center', sz:24, space:80}) +
+    wPar('　¥ ' + fmtN(r.total) + ' 円', {align:'center', sz:36, bold:true, space:80}) +
+    wPar('　（消費税' + taxPct + '％込み）', {align:'center', sz:20, space:300}) +
+    wPar('摘　要：' + (r.noteText||'別紙積算のとおり'), {sz:20});
+
+  // ── 見積書テーブル ───────────────────────────────────────────
+  const HDR_BG = 'D0D8E8';
+  const SUB_BG = 'EEF4FF';
+  const TOT_BG = 'B8CCE4';
+  const TAX_BG = 'F0F0F0';
+
+  // 列幅定義 (合計 = 9500 dxa)
+  const cW = [600, 1600, 3800, 600, 600, 1200, 2100];
+
+  function eRow(no, name, desc, qty, unit, tan, kin, bold=false, bg=null){
+    return wRow(
+      wCell(no,  {w:cW[0], align:'center', bold, bg}) +
+      wCell(name,{w:cW[1], bold, bg}) +
+      wCell(desc,{w:cW[2], bg}) +
+      wCell(qty, {w:cW[3], align:'center', bg}) +
+      wCell(unit,{w:cW[4], align:'center', bg}) +
+      wCell(tan, {w:cW[5], align:'right', bg}) +
+      wCell(kin, {w:cW[6], align:'right', bold, bg})
+    );
+  }
+
+  const estHeader = wRow(
+    wCell('番号',    {w:cW[0], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('名　称',  {w:cW[1], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('摘　要',  {w:cW[2], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('数量',    {w:cW[3], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('単位',    {w:cW[4], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('単　価',  {w:cW[5], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('金額（円）',{w:cW[6], align:'center', bold:true, bg:HDR_BG}),
+  true);
+
+  // タイトル行（業務名が結合セルに入る）
+  const titleRow = wRow(
+    wCell('', {w:cW[0]}) +
+    `<w:tc><w:tcPr><w:tcW w:w="${cW[1]+cW[2]+cW[3]+cW[4]+cW[5]+cW[6]}" w:type="dxa"/>`+
+    `<w:gridSpan w:val="6"/>`+
+    `<w:tcBorders><w:top w:val="single" w:sz="4" w:color="888888"/>`+
+    `<w:left w:val="single" w:sz="4" w:color="888888"/>`+
+    `<w:bottom w:val="single" w:sz="4" w:color="888888"/>`+
+    `<w:right w:val="single" w:sz="4" w:color="888888"/></w:tcBorders></w:tcPr>`+
+    `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>`+
+    `<w:r><w:rPr><w:b/><w:sz w:val="20"/><w:szCs w:val="20"/>`+
+    `<w:rFonts w:ascii="MS Mincho" w:hAnsi="MS Mincho" w:cs="MS Mincho"/></w:rPr>`+
+    `<w:t>${xe(r.projectName||'')}</w:t></w:r></w:p></w:tc>`
+  );
+
+  const estRows =
+    estHeader +
+    titleRow +
+    eRow('１','直接人件費','基本設計・実施設計（建築設計）','１','式','', fmtN(r.totalDirectCost)) +
+    eRow('２','直接経費','（別途積算による）','１','式','','') +
+    eRow('３','諸費用','直接人件費×'+shohiPct+'％','１','式','', fmtN(r.shohi)) +
+    eRow('４','技術費','（直接人件費＋諸費用）×'+gijuPct+'％','１','式','', fmtN(r.gijutsu)) +
+    eRow('','　計（税抜）','','','','', fmtN(r.genka), true, SUB_BG) +
+    eRow('','消費税（'+taxPct+'％）','','','','', fmtN(r.tax), false, TAX_BG) +
+    eRow('','　合　計（税込）','','','','', fmtN(r.total), true, TOT_BG);
+
+  const estTableXml = wTable(estRows, 9500);
+
+  const estPageXml =
+    wPar('見積書（建築設計）', {sz:28, bold:true, space:200}) +
+    wPar('業務名称：' + (r.projectName||''), {sz:20, space:100}) +
+    wPar('建物類型：' + noName + '　第'+r.cl+'類　　延べ床面積 S = ' + r.area.toLocaleString() + ' ㎡', {sz:18, space:200}) +
+    estTableXml +
+    wPar('', {space:100}) +
+    wPar('※ 直接人件費の算出根拠は別紙「業務量計算書」のとおり', {sz:18}) +
+    wPar('※ 技師C 日額単価：' + fmtN(r.unitPrice) + ' 円/人・日（令和8年度）', {sz:18});
+
+  // ── 業務量計算書テーブル ────────────────────────────────────
+  const cC = [2400, 1000, 1100, 700, 700, 1100, 900, 1400]; // 合計 9300
+  const calcHeader2 = wRow(
+    wCell('業務内容',       {w:cC[0], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('業務分野',       {w:cC[1], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('A=a×Sᵇ(人時)',  {w:cC[2], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('業務量率',       {w:cC[3], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('難易度',         {w:cC[4], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('業務量(人時)',    {w:cC[5], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('業務量(人日)',    {w:cC[6], align:'center', bold:true, bg:HDR_BG}) +
+    wCell('直接人件費(円)',  {w:cC[7], align:'center', bold:true, bg:HDR_BG}),
+  true);
+
+  const calcDataRows2 = r.rows.map(row =>
+    wRow(
+      wCell(row.phase,           {w:cC[0]}) +
+      wCell(row.domain,          {w:cC[1]}) +
+      wCell(fmtN(row.A),         {w:cC[2], align:'right'}) +
+      wCell(String(row.rate),    {w:cC[3], align:'right'}) +
+      wCell(String(row.difficulty),{w:cC[4], align:'right'}) +
+      wCell(fmtN(row.hours),     {w:cC[5], align:'right'}) +
+      wCell(row.days.toFixed(1), {w:cC[6], align:'right'}) +
+      wCell(fmtN(row.cost),      {w:cC[7], align:'right'})
+    )
+  ).join('');
+
+  const totalDays = r.rows.reduce((s,x)=>s+x.days, 0);
+  const calcTotalRow2 = wRow(
+    `<w:tc><w:tcPr><w:tcW w:w="${cC[0]+cC[1]+cC[2]+cC[3]+cC[4]+cC[5]}" w:type="dxa"/>`+
+    `<w:gridSpan w:val="6"/><w:shd w:val="clear" w:color="auto" w:fill="${SUB_BG}"/>`+
+    `<w:tcBorders><w:top w:val="single" w:sz="4" w:color="888888"/>`+
+    `<w:left w:val="single" w:sz="4" w:color="888888"/>`+
+    `<w:bottom w:val="single" w:sz="4" w:color="888888"/>`+
+    `<w:right w:val="single" w:sz="4" w:color="888888"/></w:tcBorders></w:tcPr>`+
+    `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>`+
+    `<w:r><w:rPr><w:b/><w:sz w:val="20"/><w:szCs w:val="20"/>`+
+    `<w:rFonts w:ascii="MS Mincho" w:hAnsi="MS Mincho" w:cs="MS Mincho"/></w:rPr>`+
+    `<w:t>直接人件費　合　計</w:t></w:r></w:p></w:tc>`+
+    wCell(totalDays.toFixed(1), {w:cC[6], align:'right', bold:true, bg:SUB_BG}) +
+    wCell(fmtN(r.totalDirectCost), {w:cC[7], align:'right', bold:true, bg:SUB_BG})
+  );
+
+  const calcTableXml = wTable(calcHeader2 + calcDataRows2 + calcTotalRow2, 9300);
+
+  const calcPageXml =
+    wPar('業務量計算書', {sz:28, bold:true, space:200}) +
+    wPar('根拠：官庁施設の設計業務等積算要領（令和６年改定）　別表1-1', {sz:18, space:100}) +
+    wPar('建物類型：' + noName + '　第'+r.cl+'類　　S = ' + r.area.toLocaleString() +
+         ' ㎡　　難易度係数：' + r.rows[0]?.difficulty??1 + '　　技師C単価：' + fmtN(r.unitPrice) + ' 円/人・日', {sz:18, space:200}) +
+    calcTableXml;
+
+  // ── Word XML 本体 ────────────────────────────────────────────
+  const bodyXml =
+    coverXml +
+    wPageBreak +
+    estPageXml +
+    wPageBreak +
+    calcPageXml +
+    `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>`+
+    `<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>`;
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  mc:Ignorable="w14 w15">
+<w:body>${bodyXml}</w:body></w:document>`;
+
+  // ── ZIP パッケージ構築 ─────────────────────────────────────
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/word/document.xml"
+    ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+  const relsMain = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    Target="word/document.xml"/>
+</Relationships>`;
+
+  const relsDoc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`;
+
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', contentTypes);
+  zip.file('_rels/.rels', relsMain);
+  zip.file('word/document.xml', documentXml);
+  zip.file('word/_rels/document.xml.rels', relsDoc);
+
+  const blob = await zip.generateAsync({ type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href  = url;
+  const dStr = r.estimateDate ? r.estimateDate.replace(/[\/\-]/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
+  link.download = '設計費見積書_' + dStr + '.docx';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+window.onload = function() {
+  const today = new Date();
+  const yy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  document.getElementById('estimateDate').value = yy + '/' + mm + '/' + dd;
+};
+</script>
+</body>
+</html>

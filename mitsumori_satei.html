@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>建築工事費 単価妥当性評価ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+      background: #f0f4f8;
+      color: #2d3748;
+      min-height: 100vh;
+    }
+
+    /* ─── ヘッダー ─── */
+    header {
+      background: linear-gradient(135deg, #1a3a5c 0%, #2e6da4 100%);
+      color: white;
+      padding: 28px 40px;
+    }
+    header h1 { font-size: 1.55em; font-weight: 700; letter-spacing: 0.02em; }
+    header p { margin-top: 6px; font-size: 0.88em; opacity: 0.85; }
+
+    /* ─── メインレイアウト ─── */
+    main {
+      max-width: 760px;
+      margin: 36px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 28px 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 1em;
+      font-weight: 700;
+      color: #1a3a5c;
+      border-left: 4px solid #2e6da4;
+      padding-left: 10px;
+      margin-bottom: 16px;
+    }
+
+    /* ─── APIキー ─── */
+    .api-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .api-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e0;
+      border-radius: 8px;
+      font-family: "Consolas", monospace;
+      font-size: 0.9em;
+      transition: border-color 0.2s;
+    }
+    .api-row input:focus { outline: none; border-color: #2e6da4; }
+    .btn-ghost {
+      padding: 10px 14px;
+      background: #edf2f7;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85em;
+      color: #4a5568;
+      white-space: nowrap;
+    }
+    .btn-ghost:hover { background: #e2e8f0; }
+
+    /* ─── ドロップゾーン ─── */
+    #drop-zone {
+      border: 2.5px dashed #90cdf4;
+      border-radius: 12px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      background: #ebf8ff;
+      position: relative;
+    }
+    #drop-zone.over {
+      background: #bee3f8;
+      border-color: #2e6da4;
+    }
+    #drop-zone.has-file {
+      background: #f0fff4;
+      border-color: #48bb78;
+    }
+    #drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+    }
+    #drop-zone .icon { font-size: 2.4em; margin-bottom: 10px; }
+    #drop-zone .label { font-size: 0.95em; color: #4a5568; }
+    #drop-zone .sub   { font-size: 0.8em; color: #a0aec0; margin-top: 4px; }
+    #file-name {
+      margin-top: 10px;
+      font-size: 0.88em;
+      color: #2f855a;
+      font-weight: 600;
+      min-height: 1.2em;
+    }
+
+    /* ─── 実行ボタン ─── */
+    #run-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #2e6da4, #1a3a5c);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.03em;
+    }
+    #run-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    #run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ─── 進捗パネル ─── */
+    #progress-panel {
+      display: none;
+    }
+    .progress-bar-wrap {
+      background: #e2e8f0;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #2e6da4, #48bb78);
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.4s ease;
+      animation: pulse-bar 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-bar {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.7; }
+    }
+    #log-box {
+      background: #1a202c;
+      color: #a0aec0;
+      font-family: "Consolas", monospace;
+      font-size: 0.82em;
+      padding: 14px 16px;
+      border-radius: 8px;
+      height: 160px;
+      overflow-y: auto;
+      line-height: 1.7;
+    }
+    #log-box .log-line { margin: 0; }
+    #log-box .log-line.ok  { color: #68d391; }
+    #log-box .log-line.err { color: #fc8181; }
+
+    /* ─── 結果パネル ─── */
+    #result-panel { display: none; }
+
+    .assessment-badge {
+      display: inline-block;
+      padding: 5px 16px;
+      border-radius: 20px;
+      background: #2e6da4;
+      color: white;
+      font-weight: 700;
+      font-size: 1em;
+      margin-bottom: 12px;
+    }
+    .summary-text {
+      line-height: 1.85;
+      color: #4a5568;
+      font-size: 0.95em;
+    }
+
+    #open-report-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #276749, #48bb78);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05em;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: opacity 0.2s;
+      letter-spacing: 0.03em;
+    }
+    #open-report-btn:hover { opacity: 0.9; }
+    .dl-btn-row { display: flex; gap: 10px; margin-top: 10px; }
+    .dl-btn {
+      flex: 1;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .dl-btn:hover { opacity: 0.85; }
+    .btn-word { background: #2B579A; color: white; }
+    .btn-pdf  { background: #C0392B; color: white; }
+
+    .restart-btn {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px;
+      background: #edf2f7;
+      color: #4a5568;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.92em;
+      cursor: pointer;
+    }
+    .restart-btn:hover { background: #e2e8f0; }
+
+    /* ─── エラー ─── */
+    #error-panel {
+      display: none;
+      background: #fff5f5;
+      border: 1.5px solid #feb2b2;
+      border-radius: 10px;
+      padding: 18px 22px;
+      color: #c53030;
+      margin-top: 12px;
+    }
+    #error-panel strong { display: block; margin-bottom: 6px; }
+
+    /* ─── フッター ─── */
+    footer {
+      text-align: center;
+      font-size: 0.78em;
+      color: #a0aec0;
+      padding: 24px 20px 32px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>建築工事費 単価妥当性評価ツール</h1>
+  <p>見積書PDF をアップロードするだけで、AI が市場単価と比較して妥当性を評価します</p>
+</header>
+
+<main>
+
+  <!-- ① API キー -->
+  <div class="card">
+    <h2>① Anthropic API キー</h2>
+    <div class="api-row">
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+      <button class="btn-ghost" onclick="toggleKey()">表示切替</button>
+    </div>
+    <div style="margin-top:8px;font-size:0.8em;color:#a0aec0">
+      APIキーは <a href="https://console.anthropic.com" target="_blank" style="color:#2e6da4">console.anthropic.com</a> で取得できます。サーバーには保存されません。
+    </div>
+  </div>
+
+  <!-- ② PDF アップロード -->
+  <div class="card">
+    <h2>② 見積書 PDF をアップロード</h2>
+    <div id="drop-zone"
+         ondragover="onDragOver(event)"
+         ondragleave="onDragLeave(event)"
+         ondrop="onDrop(event)">
+      <input type="file" id="pdf-input" accept=".pdf" onchange="onFileSelect(event)">
+      <div class="icon">📄</div>
+      <div class="label">ここにPDFをドラッグ＆ドロップ</div>
+      <div class="sub">または クリックしてファイルを選択</div>
+    </div>
+    <div id="file-name"></div>
+  </div>
+
+  <!-- 実行ボタン -->
+  <button id="run-btn" onclick="startEvaluate()">▶ 評価レポートを生成</button>
+
+  <!-- エラー -->
+  <div id="error-panel">
+    <strong>⚠ エラー</strong>
+    <pre id="error-msg" style="white-space:pre-wrap;font-size:12px;margin:0"></pre>
+  </div>
+
+  <!-- 進捗 -->
+  <div class="card" id="progress-panel" style="margin-top:20px">
+    <h2>処理中...</h2>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div id="log-box"></div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card" id="result-panel" style="margin-top:20px">
+    <h2>評価完了</h2>
+    <div class="assessment-badge" id="result-assessment"></div>
+    <div class="summary-text" id="result-summary"></div>
+    <br>
+    <a id="open-report-btn" href="#" target="_blank">📋 評価レポートを開く（別タブ）</a>
+    <div class="dl-btn-row">
+      <a id="dl-word-btn" class="dl-btn btn-word" href="#" download>📄 Word でダウンロード（編集可）</a>
+      <a id="dl-pdf-btn"  class="dl-btn btn-pdf"  href="#" target="_blank" onclick="openPdfPrint(event)">🖨 PDF として保存</a>
+    </div>
+    <button class="restart-btn" onclick="restart()">↩ 別のPDFを評価する</button>
+  </div>
+
+</main>
+
+<footer>
+  参考単価は建設物価調査会・国土交通省公表単価等に基づきます。実際の単価は地域・工期・市場動向により変動します。
+</footer>
+
+<script>
+  let selectedFile = null;
+  let progressStep = 0;
+
+  // ─── API キー表示切替 ───────────────────────────────────
+  function toggleKey() {
+    const input = document.getElementById('api-key');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  // ─── ドラッグ＆ドロップ ─────────────────────────────────
+  function onDragOver(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.add('over');
+  }
+  function onDragLeave(e) {
+    document.getElementById('drop-zone').classList.remove('over');
+  }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.pdf')) setFile(file);
+  }
+  function onFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) setFile(file);
+  }
+  function setFile(file) {
+    selectedFile = file;
+    const dz = document.getElementById('drop-zone');
+    dz.classList.add('has-file');
+    dz.querySelector('.icon').textContent = '✅';
+    dz.querySelector('.label').textContent = file.name;
+    dz.querySelector('.sub').textContent = `${(file.size / 1024).toFixed(0)} KB`;
+    document.getElementById('file-name').textContent = '';
+  }
+
+  // ─── 評価開始 ───────────────────────────────────────────
+  async function startEvaluate() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey) { showError('API キーを入力してください。'); return; }
+    if (!selectedFile)  { showError('PDF ファイルを選択してください。'); return; }
+
+    hideError();
+    setUI('running');
+    appendLog('ファイルをアップロード中...');
+
+    const form = new FormData();
+    form.append('api_key', apiKey);
+    form.append('pdf', selectedFile);
+
+    let jobId;
+    try {
+      const res = await fetch('/evaluate', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.error) { showError(data.error); setUI('idle'); return; }
+      jobId = data.job_id;
+    } catch (e) {
+      showError('サーバーとの通信に失敗しました: ' + e.message);
+      setUI('idle');
+      return;
+    }
+
+    // SSE で進捗受信
+    const es = new EventSource(`/progress/${jobId}`);
+    es.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'ping') return;
+      if (msg.type === 'progress') {
+        appendLog(msg.message);
+        progressStep = Math.min(progressStep + 12, 88);
+        setProgress(progressStep);
+      } else if (msg.type === 'done') {
+        es.close();
+        setProgress(100);
+        appendLog('✅ 完了！', 'ok');
+        showResult(msg);
+        setUI('done');
+      } else if (msg.type === 'error') {
+        es.close();
+        appendLog('❌ ' + msg.message, 'err');
+        showError(msg.message);
+        setUI('idle');
+      }
+    };
+    es.onerror = () => {
+      es.close();
+      showError('通信エラーが発生しました。');
+      setUI('idle');
+    };
+  }
+
+  // ─── UI 状態管理 ────────────────────────────────────────
+  function setUI(state) {
+    const runBtn   = document.getElementById('run-btn');
+    const progPanel = document.getElementById('progress-panel');
+    const resultPanel = document.getElementById('result-panel');
+
+    if (state === 'running') {
+      runBtn.disabled = true;
+      progPanel.style.display = 'block';
+      resultPanel.style.display = 'none';
+      progressStep = 5;
+      setProgress(5);
+      document.getElementById('log-box').innerHTML = '';
+    } else if (state === 'done') {
+      runBtn.disabled = false;
+      resultPanel.style.display = 'block';
+    } else {
+      runBtn.disabled = false;
+    }
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  function appendLog(text, cls = '') {
+    const box = document.getElementById('log-box');
+    const p = document.createElement('p');
+    p.className = 'log-line ' + cls;
+    const now = new Date().toLocaleTimeString('ja-JP');
+    p.textContent = `[${now}] ${text}`;
+    box.appendChild(p);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function showResult(msg) {
+    document.getElementById('result-assessment').textContent = '総合: ' + (msg.total_assessment || '');
+    document.getElementById('result-summary').textContent = msg.summary || '';
+    document.getElementById('open-report-btn').href = msg.report_url;
+    document.getElementById('dl-word-btn').href = msg.docx_url || '#';
+    document.getElementById('dl-pdf-btn').href = msg.report_url || '#';
+  }
+
+  function openPdfPrint(e) {
+    e.preventDefault();
+    const url = document.getElementById('dl-pdf-btn').href;
+    if (!url || url === '#') return;
+    const w = window.open(url, '_blank');
+    w.addEventListener('load', () => { w.print(); });
+  }
+
+  function showError(msg) {
+    document.getElementById('error-msg').textContent = msg;
+    document.getElementById('error-panel').style.display = 'block';
+  }
+  function hideError() {
+    document.getElementById('error-panel').style.display = 'none';
+  }
+
+  function restart() {
+    selectedFile = null;
+    progressStep = 0;
+    document.getElementById('pdf-input').value = '';
+    const dz = document.getElementById('drop-zone');
+    dz.classList.remove('has-file', 'over');
+    dz.querySelector('.icon').textContent = '📄';
+    dz.querySelector('.label').textContent = 'ここにPDFをドラッグ＆ドロップ';
+    dz.querySelector('.sub').textContent = 'または クリックしてファイルを選択';
+    document.getElementById('progress-panel').style.display = 'none';
+    document.getElementById('result-panel').style.display = 'none';
+    document.getElementById('run-btn').disabled = false;
+    setProgress(0);
+    hideError();
+  }
+</script>
+</body>
+</html>

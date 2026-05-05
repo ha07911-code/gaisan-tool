@@ -1,0 +1,2385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RC賃貸マンション 工事費概算ツール</title>
+<style>
+/* ===== リセット & ベース ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Yu Gothic", "游ゴシック", Meiryo, sans-serif;
+  font-size: 13px;
+  background: #f0f2f5;
+  color: #1a1a1a;
+}
+
+/* ===== ヘッダー ===== */
+#app-header {
+  background: #1a3a6b;
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#app-header h1 { font-size: 15px; font-weight: bold; letter-spacing: 1px; }
+#app-header .subtitle { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+.header-right { margin-left: auto; display: flex; gap: 8px; }
+.btn-print {
+  background: #2c7a4b;
+  color: white;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-print:hover { background: #245f3c; }
+.btn-print-full {
+  background: #1a3a6b;
+  color: white;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-print-full:hover { background: #142e56; }
+.btn-reset {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 7px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-reset:hover { background: rgba(255,255,255,0.25); }
+
+/* ===== レイアウト ===== */
+#layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 48px);
+}
+
+/* ===== 入力パネル ===== */
+#input-panel {
+  background: white;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+  height: calc(100vh - 48px);
+  position: sticky;
+  top: 48px;
+}
+.section {
+  border-bottom: 1px solid #eee;
+  padding: 16px 20px;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #1a3a6b;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #1a3a6b;
+}
+.field { margin-bottom: 10px; }
+.field label {
+  display: block;
+  font-size: 11.5px;
+  color: #555;
+  margin-bottom: 3px;
+}
+.field label .unit { color: #999; font-size: 10.5px; margin-left: 4px; }
+.field label .hint { color: #c00; font-size: 10px; margin-left: 4px; }
+.field input, .field select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #1a1a1a;
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: #2c5282;
+  box-shadow: 0 0 0 2px rgba(44,82,130,0.15);
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.field-row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.radio-group label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #333; cursor: pointer;
+  margin: 0;
+}
+.radio-group input[type=radio] { width: auto; margin: 0; }
+.check-group { display: flex; gap: 12px; flex-wrap: wrap; }
+.check-group label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #333; cursor: pointer;
+  margin: 0;
+}
+.check-group input[type=checkbox] { width: auto; margin: 0; }
+
+/* 条件表示ブロック */
+.cond-block { margin-top: 8px; padding: 10px; background: #f8f9fb; border-radius: 4px; border: 1px solid #e0e8f0; }
+
+/* ===== 結果パネル ===== */
+#result-panel {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* ===== バリデーションエラー ===== */
+#validation-errors {
+  display: none;
+  background: #fff5f5;
+  border-left: 4px solid #c00;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.8;
+  margin-bottom: 14px;
+  border-radius: 0 4px 4px 0;
+}
+#validation-errors ul { margin-left: 16px; }
+#validation-errors li { color: #c00; }
+
+/* ===== 合計ボックス ===== */
+.total-box {
+  background: #1a3a6b;
+  color: white;
+  border-radius: 6px;
+  padding: 16px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.total-main {}
+.total-label { font-size: 11px; opacity: 0.8; margin-bottom: 2px; }
+.total-value { font-size: 28px; font-weight: bold; line-height: 1.1; }
+.total-range { font-size: 11px; opacity: 0.7; margin-top: 3px; }
+.total-subs { display: flex; gap: 24px; flex-wrap: wrap; }
+.total-sub {}
+.total-sub .sl { font-size: 10px; opacity: 0.7; }
+.total-sub .sv { font-size: 14px; font-weight: bold; }
+
+/* ===== サマリーカード ===== */
+.summary-card {
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.summary-card h2 {
+  font-size: 13px;
+  color: #1a3a6b;
+  border-left: 4px solid #1a3a6b;
+  padding-left: 8px;
+  margin-bottom: 14px;
+}
+
+/* ===== 工事費テーブル ===== */
+table.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.result-table th {
+  background: #2c5282;
+  color: white;
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 11px;
+}
+table.result-table th.r { text-align: right; }
+table.result-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+table.result-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.result-table td.pct { text-align: right; color: #666; font-size: 11px; }
+table.result-table tr:hover td { background: #f5f8ff; }
+.tr-sub td { background: #dce8f8 !important; font-weight: bold; color: #1a3a6b; }
+.tr-total td { background: #1a3a6b !important; color: white; font-weight: bold; font-size: 13px; }
+
+/* ===== バー ===== */
+.cost-bar-wrap { margin-bottom: 4px; }
+.cost-bar-label { font-size: 11px; color: #333; display: flex; justify-content: space-between; margin-bottom: 2px; }
+.cost-bar-bg { background: #e8e8e8; border-radius: 3px; height: 8px; overflow: hidden; }
+.cost-bar-fill { background: #2c5282; height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* ===== アコーディオン ===== */
+.accordion-item { border: 1px solid #d4dde8; border-radius: 4px; margin-bottom: 5px; overflow: hidden; }
+.accordion-header {
+  display: flex; align-items: center;
+  padding: 8px 12px; background: #2c5282; color: white;
+  cursor: pointer; user-select: none; gap: 6px;
+}
+.accordion-header:hover { background: #1a3a6b; }
+.accordion-arrow { font-size: 10px; transition: transform 0.2s; }
+.accordion-header.open .accordion-arrow { transform: rotate(90deg); }
+.accordion-name { flex: 1; font-size: 12px; font-weight: bold; }
+.accordion-amount { font-size: 12px; }
+.accordion-body {
+  display: none;
+  padding: 10px;
+  background: white;
+}
+.accordion-body.open { display: block; }
+table.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+table.detail-table th {
+  background: #eef2f8;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 10px;
+  color: #333;
+  border-bottom: 1px solid #ccc;
+}
+table.detail-table th.r { text-align: right; }
+table.detail-table td { padding: 4px 8px; border-bottom: 1px solid #f0f0f0; }
+table.detail-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.detail-table tr:last-child td { border-bottom: none; }
+
+/* ===== 数量根拠 ===== */
+table.qty-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+table.qty-table th {
+  background: #f0f4fa;
+  padding: 5px 10px;
+  text-align: left;
+  font-size: 11px;
+  color: #333;
+  border-bottom: 1px solid #d0d8e8;
+}
+table.qty-table th.r { text-align: right; }
+table.qty-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #eee;
+}
+table.qty-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ===== 別途費用 ===== */
+.bekke-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.bekke-item {
+  background: #f8f9fb;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.bekke-item .bi-name { font-size: 11px; color: #555; }
+.bekke-item .bi-val { font-size: 12px; font-weight: bold; color: #1a3a6b; }
+
+/* ===== 注意書き ===== */
+.notice {
+  background: #fffbee;
+  border-left: 4px solid #c8960a;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  margin-bottom: 12px;
+  border-radius: 0 3px 3px 0;
+}
+
+/* ===== AI解析セクション ===== */
+#ai-section {
+  border-bottom: 2px solid #2c7a4b;
+  background: #f4faf6;
+}
+#ai-section-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  cursor: pointer;
+  user-select: none;
+  gap: 8px;
+}
+#ai-section-header:hover { background: #e8f4ee; }
+#ai-section-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: bold;
+  color: #2c7a4b;
+}
+#ai-section-arrow {
+  font-size: 10px;
+  color: #2c7a4b;
+  transition: transform 0.2s;
+}
+#ai-section-arrow.open { transform: rotate(90deg); }
+#ai-section-body {
+  display: none;
+  padding: 0 20px 14px;
+}
+#ai-section-body.open { display: block; }
+.btn-analyze {
+  width: 100%;
+  padding: 8px 0;
+  margin-top: 8px;
+  background: #2c7a4b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.btn-analyze:hover { background: #245f3c; }
+.btn-analyze:disabled { background: #aaa; cursor: not-allowed; }
+.plan-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.thumb-item {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border: 2px solid #cde5d4;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ai-result-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #e8f4ee;
+  border: 1px solid #9fcfb0;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+.ai-result-box .ai-apply-btn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 0;
+  background: #1a3a6b;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.ai-result-box .ai-apply-btn:hover { background: #142e56; }
+.ai-status { font-size: 10.5px; color: #666; margin-top: 4px; }
+.ai-error { color: #c00; font-size: 11px; margin-top: 4px; }
+/* ===== 印刷スタイル ===== */
+@media print {
+  body { font-size: 11px; }
+  #app-header, #input-panel { display: none; }
+  #layout { display: block; }
+  #result-panel { padding: 0; }
+  .summary-card { box-shadow: none; page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== ヘッダー ===== -->
+<header id="app-header">
+  <div>
+    <h1>工事費概算ツール</h1>
+    <div class="subtitle">RC賃貸マンション向け 概算積算システム</div>
+  </div>
+  <div class="header-right">
+    <button class="btn-print-full" onclick="printReportFull()">解説付き帳票</button>
+    <button class="btn-print" onclick="printReportSimple()">概算書のみ</button>
+    <button class="btn-reset" onclick="resetForm()">リセット</button>
+  </div>
+</header>
+
+<!-- ===== メインレイアウト ===== -->
+<div id="layout">
+
+  <!-- ===== 入力パネル ===== -->
+  <div id="input-panel">
+
+    <!-- 0. AI平面図解析 -->
+    <div id="ai-section">
+      <div id="ai-section-header" onclick="toggleAISection()">
+        <span id="ai-section-arrow">▶</span>
+        <span id="ai-section-title">AI 平面図解析（オプション）</span>
+        <span style="font-size:10px;color:#888">クリックで展開</span>
+      </div>
+      <div id="ai-section-body">
+        <div class="field">
+          <label>OpenAI APIキー<span class="hint">（GPT-4o Vision使用）</span></label>
+          <input type="password" id="apiKey" class="no-calc" placeholder="sk-..." autocomplete="off">
+          <div class="ai-status">APIキーはブラウザのローカルストレージに保存されます</div>
+        </div>
+        <div class="field">
+          <label>平面図・資料をアップロード<span class="unit">（画像 / PDF）</span></label>
+          <input type="file" id="planFile" class="no-calc" accept="image/*,application/pdf" multiple>
+        </div>
+        <div class="plan-preview" id="plan-preview"></div>
+        <button class="btn-analyze" id="btn-analyze">AI解析実行（平面図から条件を読み取る）</button>
+        <div id="ai-result-area"></div>
+      </div>
+    </div>
+
+    <!-- 1. 基本情報 -->
+    <div class="section">
+      <div class="section-title">1. 基本情報</div>
+      <div class="field"><label>物件名</label><input type="text" id="propName" value="〇〇マンション"></div>
+      <div class="field"><label>所在地</label><input type="text" id="propAddr" value="東京都〇〇区"></div>
+      <div class="field"><label>試算者・会社名</label><input type="text" id="companyName" value="" placeholder="例：〇〇コンサルタント株式会社"></div>
+      <div class="field-row">
+        <div class="field"><label>作成日</label><input type="date" id="docdate"></div>
+        <div class="field">
+          <label>試算精度</label>
+          <select id="accuracy">
+            <option value="rough">概算（±20%）</option>
+            <option value="mid" selected>中程度（±15%）</option>
+            <option value="fine">精算（±10%）</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>地域区分</label>
+        <div class="radio-group">
+          <label><input type="radio" name="areaType" value="city" checked> 市街地</label>
+          <label><input type="radio" name="areaType" value="suburb"> 郊外</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>防火地域</label>
+        <div class="radio-group">
+          <label><input type="radio" name="boka" value="quasi" checked> 準防火地域</label>
+          <label><input type="radio" name="boka" value="fire"> 防火地域</label>
+          <label><input type="radio" name="boka" value="none"> なし</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 建物規模 -->
+    <div class="section">
+      <div class="section-title">2. 建物規模</div>
+      <div class="field-row">
+        <div class="field"><label>敷地面積<span class="unit">㎡</span></label><input type="number" id="siteArea" value="233" min="0"></div>
+        <div class="field"><label>建築面積<span class="unit">㎡</span></label><input type="number" id="buildArea" value="138" min="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>概算用延床面積<span class="unit">㎡</span></label><input type="number" id="floorTotal" value="370" min="0"></div>
+        <div class="field"><label>容積対象延床<span class="unit">㎡</span></label><input type="number" id="floorVol" value="293" min="0"></div>
+      </div>
+      <div class="field-row3">
+        <div class="field"><label>階数<span class="unit">階</span></label><input type="number" id="floors" value="3" min="1"></div>
+        <div class="field"><label>階高<span class="unit">m</span></label><input type="number" id="floorH" value="3.0" step="0.1" min="0"></div>
+        <div class="field"><label>住戸数<span class="unit">戸</span></label><input type="number" id="units" value="14" min="1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>住戸平均面積<span class="unit">㎡/戸</span></label><input type="number" id="unitArea" value="21" min="0"></div>
+        <div class="field"><label>ロフト面積<span class="unit">㎡</span></label><input type="number" id="loftArea" value="70" min="0"></div>
+      </div>
+    </div>
+
+    <!-- 3. 基礎・杭 -->
+    <div class="section">
+      <div class="section-title">3. 基礎・杭</div>
+      <div class="field">
+        <label>基礎形式</label>
+        <div class="radio-group">
+          <label><input type="radio" name="kiso" value="independent" checked> 独立基礎</label>
+          <label><input type="radio" name="kiso" value="mat"> べた基礎</label>
+          <label><input type="radio" name="kiso" value="strip"> 布基礎</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>杭工事</label>
+        <div class="radio-group">
+          <label><input type="radio" name="kuiType" value="phc" checked> あり（PHC杭）</label>
+          <label><input type="radio" name="kuiType" value="none"> なし</label>
+        </div>
+      </div>
+      <div class="cond-block" id="kui-params">
+        <div class="field-row3">
+          <div class="field">
+            <label>杭径</label>
+            <select id="kuiD">
+              <option value="350">φ350</option>
+              <option value="450" selected>φ450</option>
+              <option value="600">φ600</option>
+            </select>
+          </div>
+          <div class="field"><label>本数<span class="unit">本</span></label><input type="number" id="kuiN" value="14" min="0"></div>
+          <div class="field"><label>長さ<span class="unit">m/本</span></label><input type="number" id="kuiL" value="12" min="0"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 外装 -->
+    <div class="section">
+      <div class="section-title">4. 外装</div>
+      <div class="field-row">
+        <div class="field"><label>外周長<span class="unit">m</span></label><input type="number" id="perimeter" value="50" min="0"></div>
+        <div class="field"><label>タイル割合<span class="unit">%</span></label><input type="number" id="tilePct" value="50" min="0" max="100"></div>
+      </div>
+      <div class="field">
+        <label>バルコニー</label>
+        <div class="radio-group">
+          <label><input type="radio" name="hasBalc" value="yes" checked> あり</label>
+          <label><input type="radio" name="hasBalc" value="no"> なし</label>
+        </div>
+      </div>
+      <div class="cond-block" id="balc-params">
+        <div class="field"><label>バルコニー延長<span class="unit">m</span></label><input type="number" id="balcL" value="20" min="0"></div>
+      </div>
+    </div>
+
+    <!-- 5. 設備 -->
+    <div class="section">
+      <div class="section-title">5. 設備</div>
+      <div class="field-row">
+        <div class="field">
+          <label>設備グレード</label>
+          <select id="grade">
+            <option value="economy">廉価</option>
+            <option value="standard" selected>スタンダード</option>
+            <option value="highgrade">ハイグレード</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>UBサイズ</label>
+          <select id="ubSize">
+            <option value="1014">1014</option>
+            <option value="1116" selected>1116</option>
+            <option value="1216">1216</option>
+            <option value="1317">1317</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>給湯方式</label>
+        <div class="radio-group">
+          <label><input type="radio" name="kyuyu" value="gas" checked> ガス給湯</label>
+          <label><input type="radio" name="kyuyu" value="ekiden"> エコキュート（電気）</label>
+          <label><input type="radio" name="kyuyu" value="all"> オール電化</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>追加設備</label>
+        <div class="check-group">
+          <label><input type="checkbox" id="hasAutolock"> オートロック</label>
+          <label><input type="checkbox" id="hasCamera" checked> 防犯カメラ</label>
+          <label><input type="checkbox" id="hasDelivery"> 宅配BOX</label>
+          <label><input type="checkbox" id="hasPump" checked> 加圧給水ポンプ</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. EV・外構 -->
+    <div class="section">
+      <div class="section-title">6. EV・外構</div>
+      <div class="field-row">
+        <div class="field"><label>EV台数<span class="unit">台</span></label><input type="number" id="evN" value="1" min="0"></div>
+        <div class="field"><label>EV停止数<span class="unit">停止</span></label><input type="number" id="evStop" value="3" min="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>駐車台数<span class="unit">台</span></label><input type="number" id="carN" value="1" min="0"></div>
+        <div class="field"><label>駐輪台数<span class="unit">台</span></label><input type="number" id="bikeN" value="14" min="0"></div>
+      </div>
+      <div style="border-top:1px dashed #ddd;margin-top:10px;padding-top:10px">
+        <div class="field">
+          <label>擁壁工事<span class="hint">（工作物・外構内計上）</span></label>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>高低差<span class="unit">m</span></label><input type="number" id="yoH" value="0" min="0" step="0.1"></div>
+          <div class="field"><label>延長<span class="unit">m</span></label><input type="number" id="yoL" value="0" min="0" step="0.5"></div>
+        </div>
+        <div style="font-size:10px;color:#888;line-height:1.6">H>2m → RC片持式擁壁（宅造法9条）<br>0入力 = 擁壁なし</div>
+      </div>
+    </div>
+
+    <!-- 7. 単価調整 -->
+    <div class="section">
+      <div class="section-title">7. 単価調整</div>
+      <div class="field-row">
+        <div class="field"><label>コンクリート単価<span class="unit">円/㎥</span></label><input type="number" id="upCon" value="38000" min="0"></div>
+        <div class="field"><label>鉄筋単価<span class="unit">円/t</span></label><input type="number" id="upRebar" value="270000" min="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>型枠単価<span class="unit">円/㎡</span></label><input type="number" id="upForm" value="14000" min="0"></div>
+        <div class="field"><label>諸経費率<span class="unit">%</span></label><input type="number" id="overheadPct" value="12" min="0" max="50"></div>
+      </div>
+    </div>
+
+  </div><!-- /#input-panel -->
+
+  <!-- ===== 結果パネル ===== -->
+  <div id="result-panel">
+
+    <!-- バリデーションエラー -->
+    <div id="validation-errors"></div>
+
+    <!-- 1. 合計ボックス -->
+    <div id="total-box-area"></div>
+
+    <!-- 2. 工事費内訳テーブル -->
+    <div class="summary-card">
+      <h2>工事費内訳</h2>
+      <div id="cost-table-area"></div>
+    </div>
+
+    <!-- 3. コスト構成バー -->
+    <div class="summary-card">
+      <h2>コスト構成</h2>
+      <div id="bar-chart-area"></div>
+    </div>
+
+    <!-- 4. 詳細内訳（アコーディオン） -->
+    <div class="summary-card">
+      <h2>詳細内訳</h2>
+      <div id="accordion-area"></div>
+    </div>
+
+    <!-- 5. 主要数量根拠 -->
+    <div class="summary-card">
+      <h2>主要数量根拠</h2>
+      <div id="quantity-area"></div>
+    </div>
+
+    <!-- 6. 別途費用 -->
+    <div class="summary-card">
+      <h2>別途費用（参考）</h2>
+      <div id="bekke-area"></div>
+    </div>
+
+    <!-- 注意事項 -->
+    <div class="notice">
+      ※ 本ツールの試算結果はあくまでも参考値です。実際の工事費は設計内容・地盤条件・市場動向等により大きく変動します。<br>
+      ※ 消費税は10%で計算しています。別途費用は概算であり、実態に合わせて精査が必要です。
+    </div>
+
+  </div><!-- /#result-panel -->
+</div><!-- /#layout -->
+
+<script>
+// ============================================================
+// 設定・定数
+// ============================================================
+const CFG = {
+  CON_COEFF:     0.47,   // コンクリート量係数（㎥/㎡延床）
+  REBAR_COEFF:   120,    // 鉄筋量係数（kg/㎥Con）
+  FORM_COEFF:    3.0,    // 型枠量係数（㎡/㎡延床）
+  OVERHEAD_RATE: 0.12,   // 諸経費率（デフォルト）
+  TAX_RATE:      0.10,   // 消費税率
+  CITY_PREMIUM:  150,    // 市街地割増（万円）
+};
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+
+/** 数値取得（空欄・NaNは0を返す） */
+function getNum(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? 0 : v;
+}
+
+/** 文字列取得 */
+function getStr(id) {
+  return document.getElementById(id).value.trim();
+}
+
+/** ラジオボタン値取得 */
+function getRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+
+/** チェックボックス値取得 */
+function getBool(id) {
+  return document.getElementById(id).checked;
+}
+
+/** 万円フォーマット（カンマ区切り） */
+function fmtMan(v) {
+  return Math.round(v).toLocaleString('ja-JP') + '万円';
+}
+
+/** 万円数値のみフォーマット */
+function fmtNum(v) {
+  return Math.round(v).toLocaleString('ja-JP');
+}
+
+// ============================================================
+// 入力値読み取り
+// ============================================================
+
+/** 全入力フォームの値をオブジェクトとして返す */
+function readInputs() {
+  return {
+    // 基本情報
+    propName:    getStr('propName'),
+    propAddr:    getStr('propAddr'),
+    companyName: getStr('companyName'),
+    docdate:     getStr('docdate'),
+    accuracy:   getStr('accuracy'),
+    areaType:   getRadio('areaType'),
+    boka:       getRadio('boka'),
+    // 建物規模
+    siteArea:   getNum('siteArea'),
+    buildArea:  getNum('buildArea'),
+    floorTotal: getNum('floorTotal'),
+    floorVol:   getNum('floorVol'),
+    floors:     getNum('floors'),
+    floorH:     getNum('floorH'),
+    units:      getNum('units'),
+    unitArea:   getNum('unitArea'),
+    loftArea:   getNum('loftArea'),
+    // 基礎・杭
+    kiso:       getRadio('kiso'),
+    kuiType:    getRadio('kuiType'),
+    kuiD:       getNum('kuiD'),
+    kuiN:       getNum('kuiN'),
+    kuiL:       getNum('kuiL'),
+    // 外装
+    perimeter:  getNum('perimeter'),
+    tilePct:    getNum('tilePct'),
+    hasBalc:    getRadio('hasBalc') === 'yes',
+    balcL:      getNum('balcL'),
+    // 設備
+    grade:      getStr('grade'),
+    ubSize:     getStr('ubSize'),
+    kyuyu:      getRadio('kyuyu'),
+    hasAutolock: getBool('hasAutolock'),
+    hasCamera:   getBool('hasCamera'),
+    hasDelivery: getBool('hasDelivery'),
+    hasPump:     getBool('hasPump'),
+    // EV・外構
+    evN:        getNum('evN'),
+    evStop:     getNum('evStop'),
+    carN:       getNum('carN'),
+    bikeN:      getNum('bikeN'),
+    // 擁壁
+    yoH:        getNum('yoH'),
+    yoL:        getNum('yoL'),
+    // 単価調整
+    upCon:      getNum('upCon'),
+    upRebar:    getNum('upRebar'),
+    upForm:     getNum('upForm'),
+    overheadPct: getNum('overheadPct'),
+    // 派生フラグ
+    isCity:     getRadio('areaType') === 'city',
+  };
+}
+
+// ============================================================
+// バリデーション
+// ============================================================
+
+/**
+ * 入力値を検証し、エラーメッセージの配列を返す
+ * エラーなしの場合は空配列
+ */
+function validate(inp) {
+  const errors = [];
+  if (inp.floorTotal < 50)  errors.push('延床面積は50㎡以上を入力してください');
+  if (inp.buildArea  < 30)  errors.push('建築面積は30㎡以上を入力してください');
+  if (inp.units      < 1)   errors.push('住戸数は1以上を入力してください');
+  if (inp.floors     < 1)   errors.push('階数を入力してください');
+  if (inp.floorH     < 2.5) errors.push('階高は2.5m以上を入力してください');
+  if (inp.kuiType === 'phc') {
+    if (inp.kuiN < 1) errors.push('杭本数を入力してください');
+    if (inp.kuiL < 5) errors.push('杭長は5m以上を入力してください');
+  }
+  return errors;
+}
+
+// ============================================================
+// 計算サブ関数（各工事費）
+// ============================================================
+
+/**
+ * 仮設工事費（万円）
+ * 足場面積 = 外周長 × 建物高さ × 1.1（控除なし）
+ * 解体・廃棄物 = 延床 × 1,000円/㎡
+ * 市街地割増 = CFG.CITY_PREMIUM 万円
+ */
+function calc仮設(inp, derived) {
+  const { perimeter, floorH, floors, floorTotal, isCity } = inp;
+  const bldH = floorH * floors;
+  const ashiba = perimeter * bldH * 1.1;          // 足場面積（㎡）
+  const ashibaKin = ashiba * 1800 / 10000;         // 足場費用（万円）
+  const haiki = floorTotal * 1000 / 10000;         // 廃棄物（万円）
+  const genkan = 150;                               // 現場事務所・電力（万円）
+  const anzen = 80;                                 // 安全費・養生（万円）
+  const cityPrem = isCity ? CFG.CITY_PREMIUM : 0;
+  return ashibaKin + haiki + genkan + anzen + cityPrem;
+}
+
+/**
+ * 杭工事費（万円）
+ * 杭径別単価: φ350→43,000円/m, φ450→55,000円/m, φ600→71,000円/m
+ * 杭頭処理: 54,000円/本
+ */
+function calc杭(inp) {
+  if (inp.kuiType !== 'phc') return 0;
+  const unitPrice = { 350: 43000, 450: 55000, 600: 71000 };
+  const pricePerM = unitPrice[inp.kuiD] || 55000;
+  const driveKin = inp.kuiN * inp.kuiL * pricePerM / 10000;
+  const headKin  = inp.kuiN * 54000 / 10000;
+  return driveKin + headKin;
+}
+
+/**
+ * 基礎工事費（万円）
+ * 独立基礎: 46,000円/㎡, べた: 70,000円/㎡, 布: 38,000円/㎡
+ * 土工事込み
+ */
+function calc基礎(inp) {
+  const unitPrice = { independent: 46000, mat: 70000, strip: 38000 };
+  const price = unitPrice[inp.kiso] || 46000;
+  return inp.buildArea * price / 10000;
+}
+
+/**
+ * 上部躯体工事費（万円）
+ * コン量 = 延床 × CON_COEFF(0.47)
+ * 鉄筋量 = コン量 × REBAR_COEFF(120) kg → ÷1000 = t
+ * 型枠量 = 延床 × FORM_COEFF(3.0)
+ */
+function calc躯体(inp, derived) {
+  const conV    = derived.conV;                  // ㎥
+  const rebarT  = derived.rebarT;                // t
+  const formA   = derived.formA;                 // ㎡
+  const conKin   = conV   * inp.upCon   / 10000;
+  const rebarKin = rebarT * inp.upRebar / 10000;
+  const formKin  = formA  * inp.upForm  / 10000;
+  return conKin + rebarKin + formKin;
+}
+
+/**
+ * 外装工事費（万円）
+ * 外壁正味 = 外周長×高さ × 0.80（開口部20%控除）
+ * タイル: 25,000円/㎡, 吹付: 8,000円/㎡
+ * バルコニー防水/手摺: 8,000円/㎡（奥行1.5m固定）
+ */
+function calc外装(inp, derived) {
+  const wallA = derived.wallA;                    // 外壁正味面積（㎡）
+  const tileA = wallA * (inp.tilePct / 100);
+  const blowA = wallA - tileA;
+  const tileKin = tileA * 25000 / 10000;
+  const blowKin = blowA * 8000  / 10000;
+  let balcKin = 0;
+  if (inp.hasBalc) {
+    const balcA = inp.balcL * 1.5;               // 奥行1.5m
+    balcKin = balcA * 8000 / 10000;
+  }
+  return tileKin + blowKin + balcKin;
+}
+
+/**
+ * 内装工事費（万円）
+ * 住戸フローリング: 12,000円/㎡（居室67%）
+ * 住戸CF: 4,000円/㎡（水廻33%）
+ * 住戸壁クロス: 4,500円/㎡（壁面積 = 住戸面積×2.6）
+ * 住戸天井クロス: 4,000円/㎡
+ * ロフト: 10,000円/㎡
+ * 共用廊下床: 8,000円/㎡, 廊下壁: 2,500円/㎡
+ */
+function calc内装(inp) {
+  const { units, unitArea, loftArea, floorTotal, floors } = inp;
+  const unitTotalA = units * unitArea;
+  // 住戸床
+  const floorKin = unitTotalA * 0.67 * 12000 / 10000;
+  const cfKin    = unitTotalA * 0.33 * 4000  / 10000;
+  // 住戸壁・天井クロス
+  const wallKin  = unitTotalA * 2.6 * 4500 / 10000;
+  const ceilKin  = unitTotalA * 4000 / 10000;
+  // ロフト
+  const loftKin  = loftArea * 10000 / 10000;
+  // 共用廊下（延床 - 住戸合計 - ロフト）÷ floors ≒ 廊下面積/階
+  const corrA = Math.max(floorTotal - unitTotalA - loftArea, 0);
+  const corrFloorKin = corrA * 8000  / 10000;
+  const corrWallKin  = corrA * 2.6 * 2500 / 10000;
+  return floorKin + cfKin + wallKin + ceilKin + loftKin + corrFloorKin + corrWallKin;
+}
+
+/**
+ * 建具工事費（万円）
+ * 防火割増係数: 準防火=1.00, 防火=1.05, なし=0.80
+ * 玄関ドア: 23万×係数, バルコニーサッシ: 15万×係数
+ * 居室窓: 8万×係数×2台, 小窓: 4万×係数
+ * 共用建具: 108万（一式）
+ */
+function calc建具(inp) {
+  const bokaCoeff = { quasi: 1.00, fire: 1.05, none: 0.80 };
+  const k = bokaCoeff[inp.boka] || 1.00;
+  const { units, hasBalc } = inp;
+  const genkan = units * 23 * k;
+  const balcSash = hasBalc ? units * 15 * k : 0;
+  const madoR  = units * 8 * k * 2;
+  const madoS  = units * 4 * k;
+  const kyoyo  = 108;
+  return genkan + balcSash + madoR + madoS + kyoyo;
+}
+
+/**
+ * 電気設備工事費（万円）
+ * 住戸: 30万/戸
+ * 共用: 幹線200万+照明100万+インターホン80万+カメラ60万+その他90万
+ * EV専用電源: 50万×台数
+ */
+function calc電気(inp) {
+  const { units, evN, hasAutolock, hasCamera } = inp;
+  const jushoBun = units * 30;
+  const kansen   = 200;
+  const shomei   = 100;
+  const interphone = 80;
+  const camera   = hasCamera ? 60 : 0;
+  const autolock = hasAutolock ? 0 : 0;   // インターホン込み
+  const etc      = 90;
+  const evPower  = evN * 50;
+  return jushoBun + kansen + shomei + interphone + camera + autolock + etc + evPower;
+}
+
+/**
+ * 機械設備工事費（万円）
+ * UB: 廉価35万/スタンダード45万/ハイグレード55万
+ * 洗面: 廉価8万/スタンダード12万/ハイグレード18万
+ * 便器: 廉価6万/スタンダード10万/ハイグレード16万
+ * キッチン: 廉価15万/スタンダード25万/ハイグレード40万
+ * 給湯器: ガス10万/電気22万/オール電化25万
+ * 住戸内配管: 給水8万+排水6万+ガス4万+換気3万
+ * 共用: 給排水220万+ガス幹線50万+加圧ポンプ100万+雑44万
+ */
+function calc機械(inp) {
+  const { units, grade, ubSize, kyuyu, hasPump } = inp;
+  const ubPrice   = { economy: 35, standard: 45, highgrade: 55 };
+  const sensPrice = { economy: 8,  standard: 12, highgrade: 18 };
+  const benPrice  = { economy: 6,  standard: 10, highgrade: 16 };
+  const kitPrice  = { economy: 15, standard: 25, highgrade: 40 };
+  const kyuyuPrice = { gas: 10, ekiden: 22, all: 25 };
+  const unitKiki = (ubPrice[grade] || 45) + (sensPrice[grade] || 12) +
+                   (benPrice[grade] || 10) + (kitPrice[grade] || 25) +
+                   (kyuyuPrice[kyuyu] || 10);
+  const unitHaikan = 8 + 6 + (kyuyu === 'gas' ? 4 : 0) + 3;
+  const jushoBun = units * (unitKiki + unitHaikan);
+  const kyoyo = 220 + 50 + (hasPump ? 100 : 0) + 44;
+  return jushoBun + kyoyo;
+}
+
+/**
+ * エレベーター工事費（万円）
+ * 3停止=1,000万, 4停止=1,200万, 5停止=1,400万/台
+ */
+function calcEV(inp) {
+  if (inp.evN <= 0) return 0;
+  const stop = Math.max(3, Math.min(5, Math.round(inp.evStop)));
+  const pricePerUnit = { 3: 1000, 4: 1200, 5: 1400 };
+  const price = pricePerUnit[stop] || 1000;
+  return inp.evN * price;
+}
+
+/**
+ * 共用付帯工事費（万円）
+ * 基本: 50万 + 住戸数×3,000円
+ * 宅配BOX: +50万
+ */
+function calc共用付帯(inp) {
+  const base     = 50 + inp.units * 0.3;    // 0.3万円/戸
+  const delivery = inp.hasDelivery ? 50 : 0;
+  return base + delivery;
+}
+
+/**
+ * 擁壁工事費算出コア
+ * 根拠: 宅地造成等規制法第9条（H>2m → RC擁壁必須）
+ *       建築基準法施行令第142条（仕様規定）
+ * 断面: RC片持式
+ *   壁厚根元 t_base = max(H/10, 0.20m)
+ *   壁厚天端 t_top  = 0.20m（固定）
+ *   底版幅   B_foot = max(0.5H, 0.60m)
+ *   底版厚   D_foot = max(0.1H, 0.30m)
+ * 鉄筋係数: 80kg/m³（RC擁壁標準）
+ * 土工事: 掘削・埋戻し 3,000円/m³
+ * 雑工事: 材工費の10%
+ */
+function calc擁壁(inp) {
+  const { yoH, yoL, upCon, upRebar, upForm } = inp;
+  if (yoH <= 0 || yoL <= 0) return { total: 0, conV: 0, rebarKg: 0, formA: 0, conKin: 0, rebarKin: 0, formKin: 0, dokoKin: 0, miscKin: 0, tBase: 0, tTop: 0, bFoot: 0, dFoot: 0 };
+
+  const tBase = Math.max(yoH / 10, 0.20);   // 根元壁厚（m）
+  const tTop  = 0.20;                         // 天端壁厚（m）
+  const tAvg  = (tBase + tTop) / 2;          // 平均壁厚（m）
+  const bFoot = Math.max(0.5 * yoH, 0.60);  // 底版幅（m）
+  const dFoot = Math.max(0.10 * yoH, 0.30); // 底版厚（m）
+
+  // コンクリート量（m³）
+  const conWall = tAvg * yoH * yoL;
+  const conFoot = bFoot * dFoot * yoL;
+  const conV    = conWall + conFoot;
+
+  // 鉄筋量（kg）
+  const rebarKg = conV * 80;
+
+  // 型枠面積（m²）
+  const formA = (2 * yoH + 2 * dFoot) * yoL;
+
+  // 土工事（掘削・埋戻し）
+  const dokoKin = Math.round(yoL * bFoot * (yoH + dFoot) * 3000 / 10000);
+
+  const conKin   = Math.round(conV     * upCon          / 10000);
+  const rebarKin = Math.round(rebarKg / 1000 * upRebar  / 10000);
+  const formKin  = Math.round(formA    * upForm          / 10000);
+  const miscKin  = Math.round((conKin + rebarKin + formKin) * 0.10);
+  const total    = conKin + rebarKin + formKin + dokoKin + miscKin;
+
+  return { total, conV, rebarKg, formA, conWall, conFoot, conKin, rebarKin, formKin, dokoKin, miscKin, tBase, tTop, bFoot, dFoot };
+}
+
+/**
+ * 外構工事費（万円）
+ * アプローチ等: 敷地面積×1.5万円/㎡
+ * 駐車場: 30万/台, 駐輪場: 2万/台
+ * 擁壁（工作物）: calc擁壁() で算出し含める
+ */
+function calc外構(inp) {
+  const approach = inp.siteArea * 1.5;
+  const car  = inp.carN  * 30;
+  const bike = inp.bikeN * 2;
+  const yo   = calc擁壁(inp).total;
+  return approach + car + bike + yo;
+}
+
+// ============================================================
+// メイン計算関数
+// ============================================================
+
+/**
+ * 全工事費を計算して集計結果を返す
+ */
+function calculateAll(inp) {
+  const overheadRate = (inp.overheadPct || CFG.OVERHEAD_RATE * 100) / 100;
+  // 派生数量の事前計算
+  const bldH   = inp.floorH * inp.floors;
+  const conV   = inp.floorTotal * CFG.CON_COEFF;          // ㎥
+  const rebarT = conV * CFG.REBAR_COEFF / 1000;           // t
+  const formA  = inp.floorTotal * CFG.FORM_COEFF;         // ㎡
+  const wallA  = inp.perimeter * bldH * 0.80;             // 外壁正味面積
+  const derived = { bldH, conV, rebarT, formA, wallA };
+
+  // 各工事費（万円）
+  const costs = {
+    仮設:   Math.round(calc仮設(inp, derived)),
+    杭:     Math.round(calc杭(inp)),
+    基礎:   Math.round(calc基礎(inp)),
+    躯体:   Math.round(calc躯体(inp, derived)),
+    外装:   Math.round(calc外装(inp, derived)),
+    内装:   Math.round(calc内装(inp)),
+    建具:   Math.round(calc建具(inp)),
+    電気:   Math.round(calc電気(inp)),
+    機械:   Math.round(calc機械(inp)),
+    EV:     Math.round(calcEV(inp)),
+    共用付帯: Math.round(calc共用付帯(inp)),
+    外構:   Math.round(calc外構(inp)),
+  };
+
+  const directTotal = Object.values(costs).reduce((s, v) => s + v, 0);
+  const overhead    = Math.round(directTotal * overheadRate);
+  const totalExTax  = directTotal + overhead;
+  const tax         = Math.round(totalExTax * CFG.TAX_RATE);
+  const totalInTax  = totalExTax + tax;
+
+  // 内訳テーブル用アイテム
+  const items = Object.entries(costs).map(([name, val], i) => ({
+    no: i + 1, name, val,
+    pct: directTotal > 0 ? (val / directTotal * 100).toFixed(1) : '0.0',
+  }));
+
+  return { costs, items, directTotal, overhead, totalExTax, tax, totalInTax, derived };
+}
+
+// ============================================================
+// 詳細明細計算
+// ============================================================
+
+/** 各工事の詳細明細（工事内容・数量・単位・単価・金額）を返す */
+function calcDetails(inp, result) {
+  const d  = result.derived;
+  const bokaCoeff = { quasi: 1.00, fire: 1.05, none: 0.80 };
+  const k  = bokaCoeff[inp.boka] || 1.00;
+  const details = {};
+
+  // 仮設
+  const ashibaA = inp.perimeter * d.bldH * 1.1;
+  details['仮設'] = [
+    { item: '足場設置・解体', qty: ashibaA.toFixed(0), unit: '㎡', up: 1800, kin: Math.round(ashibaA * 1800 / 10000) },
+    { item: '現場事務所・仮設電力', qty: 1, unit: '式', up: 1500000, kin: 150 },
+    { item: '安全費・養生', qty: 1, unit: '式', up: 800000, kin: 80 },
+    { item: '廃棄物処理', qty: inp.floorTotal.toFixed(0), unit: '㎡', up: 1000, kin: Math.round(inp.floorTotal * 1000 / 10000) },
+    inp.isCity ? { item: '市街地割増', qty: 1, unit: '式', up: CFG.CITY_PREMIUM * 10000, kin: CFG.CITY_PREMIUM } : null,
+  ].filter(Boolean);
+
+  // 杭
+  if (inp.kuiType === 'phc') {
+    const unitPrice = { 350: 43000, 450: 55000, 600: 71000 };
+    const up = unitPrice[inp.kuiD] || 55000;
+    const totalL = inp.kuiN * inp.kuiL;
+    details['杭'] = [
+      { item: `PHC杭打設 φ${inp.kuiD}`, qty: totalL.toFixed(0), unit: 'm', up: up, kin: Math.round(totalL * up / 10000) },
+      { item: '杭頭処理', qty: inp.kuiN, unit: '本', up: 54000, kin: Math.round(inp.kuiN * 54000 / 10000) },
+    ];
+  } else {
+    details['杭'] = [{ item: '杭工事なし', qty: '-', unit: '-', up: 0, kin: 0 }];
+  }
+
+  // 基礎
+  const kisoPrice = { independent: 46000, mat: 70000, strip: 38000 };
+  const kisoUp = kisoPrice[inp.kiso] || 46000;
+  const kisoName = { independent: '独立基礎', mat: 'べた基礎', strip: '布基礎' };
+  details['基礎'] = [
+    { item: `${kisoName[inp.kiso] || '基礎'}工事（土工事込）`, qty: inp.buildArea.toFixed(0), unit: '㎡', up: kisoUp, kin: Math.round(inp.buildArea * kisoUp / 10000) },
+  ];
+
+  // 躯体
+  details['躯体'] = [
+    { item: 'コンクリート打設', qty: d.conV.toFixed(1), unit: '㎥', up: inp.upCon, kin: Math.round(d.conV * inp.upCon / 10000) },
+    { item: '鉄筋工事', qty: d.rebarT.toFixed(2), unit: 't', up: inp.upRebar, kin: Math.round(d.rebarT * inp.upRebar / 10000) },
+    { item: '型枠工事', qty: d.formA.toFixed(0), unit: '㎡', up: inp.upForm, kin: Math.round(d.formA * inp.upForm / 10000) },
+  ];
+
+  // 外装
+  const tileA = d.wallA * (inp.tilePct / 100);
+  const blowA = d.wallA - tileA;
+  const balcA = inp.hasBalc ? inp.balcL * 1.5 : 0;
+  details['外装'] = [
+    { item: 'タイル貼り', qty: tileA.toFixed(0), unit: '㎡', up: 25000, kin: Math.round(tileA * 25000 / 10000) },
+    { item: '外壁吹付塗装', qty: blowA.toFixed(0), unit: '㎡', up: 8000, kin: Math.round(blowA * 8000 / 10000) },
+    inp.hasBalc ? { item: 'バルコニー防水・手摺', qty: balcA.toFixed(0), unit: '㎡', up: 8000, kin: Math.round(balcA * 8000 / 10000) } : null,
+  ].filter(Boolean);
+
+  // 内装
+  const unitTotalA = inp.units * inp.unitArea;
+  const corrA = Math.max(inp.floorTotal - unitTotalA - inp.loftArea, 0);
+  details['内装'] = [
+    { item: '住戸フローリング', qty: (unitTotalA * 0.67).toFixed(0), unit: '㎡', up: 12000, kin: Math.round(unitTotalA * 0.67 * 12000 / 10000) },
+    { item: '住戸CF貼り（水廻）', qty: (unitTotalA * 0.33).toFixed(0), unit: '㎡', up: 4000, kin: Math.round(unitTotalA * 0.33 * 4000 / 10000) },
+    { item: '住戸壁クロス', qty: (unitTotalA * 2.6).toFixed(0), unit: '㎡', up: 4500, kin: Math.round(unitTotalA * 2.6 * 4500 / 10000) },
+    { item: '住戸天井クロス', qty: unitTotalA.toFixed(0), unit: '㎡', up: 4000, kin: Math.round(unitTotalA * 4000 / 10000) },
+    inp.loftArea > 0 ? { item: 'ロフト仕上げ', qty: inp.loftArea.toFixed(0), unit: '㎡', up: 10000, kin: Math.round(inp.loftArea * 10000 / 10000) } : null,
+    { item: '共用廊下床仕上げ', qty: corrA.toFixed(0), unit: '㎡', up: 8000, kin: Math.round(corrA * 8000 / 10000) },
+    { item: '共用廊下壁仕上げ', qty: (corrA * 2.6).toFixed(0), unit: '㎡', up: 2500, kin: Math.round(corrA * 2.6 * 2500 / 10000) },
+  ].filter(Boolean);
+
+  // 建具
+  details['建具'] = [
+    { item: `玄関ドア（防火係数×${k.toFixed(2)}）`, qty: inp.units, unit: '戸', up: Math.round(23 * k * 10000), kin: Math.round(inp.units * 23 * k) },
+    inp.hasBalc ? { item: 'バルコニーサッシ', qty: inp.units, unit: '戸', up: Math.round(15 * k * 10000), kin: Math.round(inp.units * 15 * k) } : null,
+    { item: '居室窓（2台/戸）', qty: inp.units * 2, unit: '台', up: Math.round(8 * k * 10000), kin: Math.round(inp.units * 8 * k * 2) },
+    { item: '小窓', qty: inp.units, unit: '戸', up: Math.round(4 * k * 10000), kin: Math.round(inp.units * 4 * k) },
+    { item: '共用建具（一式）', qty: 1, unit: '式', up: 1080000, kin: 108 },
+  ].filter(Boolean);
+
+  // 電気
+  details['電気'] = [
+    { item: '住戸電気設備', qty: inp.units, unit: '戸', up: 300000, kin: inp.units * 30 },
+    { item: '共用幹線・電灯', qty: 1, unit: '式', up: 3000000, kin: 300 },
+    { item: 'インターホン', qty: 1, unit: '式', up: 800000, kin: 80 },
+    inp.hasCamera ? { item: '防犯カメラ', qty: 1, unit: '式', up: 600000, kin: 60 } : null,
+    { item: 'その他電気', qty: 1, unit: '式', up: 900000, kin: 90 },
+    inp.evN > 0 ? { item: 'EV専用電源', qty: inp.evN, unit: '台', up: 500000, kin: inp.evN * 50 } : null,
+  ].filter(Boolean);
+
+  // 機械
+  const ubPrice = { economy: 35, standard: 45, highgrade: 55 };
+  const kyuyuPrice = { gas: 10, ekiden: 22, all: 25 };
+  details['機械'] = [
+    { item: `UB（${inp.ubSize}）`, qty: inp.units, unit: '台', up: (ubPrice[inp.grade] || 45) * 10000, kin: inp.units * (ubPrice[inp.grade] || 45) },
+    { item: '洗面・便器・キッチン', qty: inp.units, unit: '式', up: 270000, kin: Math.round(inp.units * 27) },
+    { item: `給湯器（${inp.kyuyu}）`, qty: inp.units, unit: '台', up: (kyuyuPrice[inp.kyuyu] || 10) * 10000, kin: inp.units * (kyuyuPrice[inp.kyuyu] || 10) },
+    { item: '住戸内配管工事', qty: inp.units, unit: '戸', up: 210000, kin: inp.units * 21 },
+    { item: '共用給排水', qty: 1, unit: '式', up: 2200000, kin: 220 },
+    inp.hasPump ? { item: '加圧給水ポンプ', qty: 1, unit: '式', up: 1000000, kin: 100 } : null,
+    { item: '共用雑設備', qty: 1, unit: '式', up: 940000, kin: 94 },
+  ].filter(Boolean);
+
+  // EV
+  if (inp.evN > 0) {
+    const stop = Math.max(3, Math.min(5, Math.round(inp.evStop)));
+    const pricePerUnit = { 3: 1000, 4: 1200, 5: 1400 };
+    const up = pricePerUnit[stop] || 1000;
+    details['EV'] = [
+      { item: `エレベーター（${stop}停止）`, qty: inp.evN, unit: '台', up: up * 10000, kin: inp.evN * up },
+    ];
+  } else {
+    details['EV'] = [{ item: 'EV工事なし', qty: '-', unit: '-', up: 0, kin: 0 }];
+  }
+
+  // 共用付帯
+  details['共用付帯'] = [
+    { item: '共用付帯（一式）', qty: 1, unit: '式', up: 500000, kin: 50 },
+    { item: '共用付帯（住戸数比例）', qty: inp.units, unit: '戸', up: 3000, kin: Math.round(inp.units * 0.3) },
+    inp.hasDelivery ? { item: '宅配BOX', qty: 1, unit: '式', up: 500000, kin: 50 } : null,
+  ].filter(Boolean);
+
+  // 外構
+  const yo = calc擁壁(inp);
+  details['外構'] = [
+    { item: 'アプローチ・外構仕上げ', qty: inp.siteArea.toFixed(0), unit: '㎡', up: 15000, kin: Math.round(inp.siteArea * 1.5) },
+    inp.carN > 0 ? { item: '駐車場整備', qty: inp.carN, unit: '台', up: 300000, kin: inp.carN * 30 } : null,
+    inp.bikeN > 0 ? { item: '駐輪場整備', qty: inp.bikeN, unit: '台', up: 20000, kin: inp.bikeN * 2 } : null,
+    // 擁壁（工作物）
+    yo.total > 0 ? { item: `【工作物】RC擁壁 H${inp.yoH}m×L${inp.yoL}m コンクリート`, qty: yo.conV.toFixed(1), unit: '㎥', up: inp.upCon, kin: yo.conKin } : null,
+    yo.total > 0 ? { item: `【工作物】RC擁壁 鉄筋工事`, qty: (yo.rebarKg / 1000).toFixed(2), unit: 't', up: inp.upRebar, kin: yo.rebarKin } : null,
+    yo.total > 0 ? { item: `【工作物】RC擁壁 型枠工事`, qty: yo.formA.toFixed(1), unit: '㎡', up: inp.upForm, kin: yo.formKin } : null,
+    yo.total > 0 ? { item: `【工作物】RC擁壁 土工事（掘削・埋戻し）`, qty: (inp.yoL * yo.bFoot * (inp.yoH + yo.dFoot)).toFixed(1), unit: '㎥', up: 3000, kin: yo.dokoKin } : null,
+    yo.total > 0 ? { item: `【工作物】RC擁壁 雑工事`, qty: 1, unit: '式', up: yo.miscKin * 10000, kin: yo.miscKin } : null,
+  ].filter(Boolean);
+
+  return details;
+}
+
+// ============================================================
+// 描画（レンダリング）
+// ============================================================
+
+/** 合計ボックス */
+function renderSummary(result, inp) {
+  const { totalExTax, tax, totalInTax, directTotal, overhead } = result;
+  const sqm  = inp.floorTotal > 0 ? Math.round(totalExTax / inp.floorTotal * 10000) : 0;
+  const unit = inp.units > 0 ? Math.round(totalExTax / inp.units) : 0;
+  const lo   = Math.round(totalExTax * 0.85);
+  const hi   = Math.round(totalExTax * 1.15);
+
+  document.getElementById('total-box-area').innerHTML = `
+    <div class="total-box">
+      <div class="total-main">
+        <div class="total-label">工事費合計（税抜）</div>
+        <div class="total-value">${fmtNum(totalExTax)} <span style="font-size:16px">万円</span></div>
+        <div class="total-range">レンジ：${fmtNum(lo)} ～ ${fmtNum(hi)} 万円</div>
+      </div>
+      <div class="total-subs">
+        <div class="total-sub">
+          <div class="sl">㎡単価（税抜）</div>
+          <div class="sv">${sqm.toLocaleString()} 円/㎡</div>
+        </div>
+        <div class="total-sub">
+          <div class="sl">1戸単価（税抜）</div>
+          <div class="sv">${fmtNum(unit)} 万円/戸</div>
+        </div>
+        <div class="total-sub">
+          <div class="sl">消費税（10%）</div>
+          <div class="sv">${fmtNum(tax)} 万円</div>
+        </div>
+        <div class="total-sub">
+          <div class="sl">税込総額</div>
+          <div class="sv">${fmtNum(totalInTax)} 万円</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/** 工事費内訳テーブル */
+function renderCostTable(result) {
+  const { items, directTotal, overhead, totalExTax } = result;
+  let rows = items.map(it => `
+    <tr>
+      <td>${it.no}</td>
+      <td>${it.name}工事</td>
+      <td class="r">${fmtNum(it.val)}</td>
+      <td class="pct">${it.pct}%</td>
+    </tr>`).join('');
+
+  rows += `
+    <tr class="tr-sub">
+      <td colspan="2">直接工事費 計</td>
+      <td class="r">${fmtNum(directTotal)}</td>
+      <td class="pct">100.0%</td>
+    </tr>
+    <tr>
+      <td colspan="2">諸経費（${result.overhead > 0 ? (result.overhead / directTotal * 100).toFixed(1) : 0}%）</td>
+      <td class="r">${fmtNum(overhead)}</td>
+      <td class="pct">-</td>
+    </tr>
+    <tr class="tr-total">
+      <td colspan="2">工事費合計（税抜）</td>
+      <td class="r">${fmtNum(totalExTax)}</td>
+      <td class="pct">-</td>
+    </tr>`;
+
+  document.getElementById('cost-table-area').innerHTML = `
+    <table class="result-table">
+      <thead><tr>
+        <th style="width:36px">No</th>
+        <th>工事名</th>
+        <th class="r" style="width:110px">金額（万円）</th>
+        <th class="r" style="width:70px">構成比</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+/** コスト構成バー */
+function renderBarChart(result) {
+  const { items, directTotal } = result;
+  const html = items.map(it => {
+    const w = directTotal > 0 ? (it.val / directTotal * 100).toFixed(1) : 0;
+    return `<div class="cost-bar-wrap">
+      <div class="cost-bar-label">
+        <span>${it.name}工事</span>
+        <span>${fmtNum(it.val)}万円（${w}%）</span>
+      </div>
+      <div class="cost-bar-bg"><div class="cost-bar-fill" style="width:${w}%"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('bar-chart-area').innerHTML = html;
+}
+
+/** 詳細内訳アコーディオン */
+function renderDetailAccordion(result, inp) {
+  const details = calcDetails(inp, result);
+  const html = result.items.map(it => {
+    const rows = (details[it.name] || []).map(r => `
+      <tr>
+        <td>${r.item}</td>
+        <td class="r">${typeof r.qty === 'number' ? r.qty.toLocaleString() : r.qty}</td>
+        <td>${r.unit}</td>
+        <td class="r">${r.up > 0 ? r.up.toLocaleString() : '-'}</td>
+        <td class="r">${r.kin > 0 ? fmtNum(r.kin) : '-'}</td>
+      </tr>`).join('');
+    return `<div class="accordion-item">
+      <div class="accordion-header" onclick="toggleAccordion(this)">
+        <span class="accordion-arrow">▶</span>
+        <span class="accordion-name">${it.no}. ${it.name}工事</span>
+        <span class="accordion-amount">${fmtNum(it.val)} 万円</span>
+      </div>
+      <div class="accordion-body">
+        <table class="detail-table">
+          <thead><tr>
+            <th>工事内容</th><th class="r">数量</th><th>単位</th>
+            <th class="r">単価（円）</th><th class="r">金額（万円）</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('accordion-area').innerHTML = html;
+}
+
+/** AI解析セクション開閉 */
+function toggleAISection() {
+  const arrow = document.getElementById('ai-section-arrow');
+  const body  = document.getElementById('ai-section-body');
+  const hint  = arrow.parentElement.querySelector('span:last-child');
+  arrow.classList.toggle('open');
+  body.classList.toggle('open');
+  hint.textContent = body.classList.contains('open') ? 'クリックで閉じる' : 'クリックで展開';
+}
+
+/** アコーディオン開閉 */
+function toggleAccordion(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+/** 主要数量根拠 */
+function renderQuantityTable(inp, result) {
+  const d = result.derived;
+  const yo = calc擁壁(inp);
+  const yoRows = yo.total > 0 ? [
+    [`擁壁 コン量（H${inp.yoH}m×L${inp.yoL}m）`, yo.conV.toFixed(1), '㎥', `壁体${yo.conWall.toFixed(1)}+底版${yo.conFoot.toFixed(1)} / 壁厚根元${(yo.tBase*1000).toFixed(0)}mm 底版${(yo.bFoot).toFixed(2)}×${(yo.dFoot).toFixed(2)}m`],
+    ['擁壁 鉄筋量', (yo.rebarKg / 1000).toFixed(2), 't', `${yo.conV.toFixed(1)}㎥ × 80kg/㎥`],
+    ['擁壁 型枠量', yo.formA.toFixed(1), '㎡', `壁両面2×H×L + 底版端部2×D×L`],
+  ] : [];
+  const rows = [
+    ['コンクリート量', d.conV.toFixed(1), '㎥', `延床${inp.floorTotal}㎡ × ${CFG.CON_COEFF}㎥/㎡`],
+    ['鉄筋量', d.rebarT.toFixed(2), 't', `Con${d.conV.toFixed(1)}㎥ × ${CFG.REBAR_COEFF}kg/㎥ ÷ 1000`],
+    ['型枠量', d.formA.toFixed(0), '㎡', `延床${inp.floorTotal}㎡ × ${CFG.FORM_COEFF}㎡/㎡`],
+    ['建物高さ', d.bldH.toFixed(1), 'm', `階高${inp.floorH}m × ${inp.floors}階`],
+    ['外壁正味面積', d.wallA.toFixed(0), '㎡', `外周${inp.perimeter}m × H${d.bldH.toFixed(1)}m × 0.80（開口20%控除）`],
+    ['住戸合計面積', (inp.units * inp.unitArea).toFixed(0), '㎡', `${inp.units}戸 × ${inp.unitArea}㎡/戸`],
+    ...yoRows,
+  ].map(([name, val, unit, note]) => `
+    <tr>
+      <td>${name}</td>
+      <td class="r">${val}</td>
+      <td>${unit}</td>
+      <td style="color:#666;font-size:11px">${note}</td>
+    </tr>`).join('');
+
+  document.getElementById('quantity-area').innerHTML = `
+    <table class="qty-table">
+      <thead><tr>
+        <th>項目</th><th class="r">数量</th><th>単位</th><th>算出根拠</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+/** 別途費用 */
+function renderBekke(result, inp) {
+  const { totalExTax } = result;
+  const items = [
+    { name: '設計・監理費（概算）', val: Math.round(totalExTax * 0.07) },
+    { name: '地盤調査費', val: 80 },
+    { name: '確認申請・各種申請費', val: 50 },
+    { name: '解体工事費（既存建物あり）', val: '別途検討' },
+    { name: '家具・什器・備品', val: Math.round(inp.units * 5) },
+    { name: '不動産取得税・登記費用', val: '別途算出' },
+    { name: '金融費用・調査費', val: '別途算出' },
+    { name: '造成工事費', val: '地盤条件による' },
+  ];
+  const html = items.map(it => `
+    <div class="bekke-item">
+      <div class="bi-name">${it.name}</div>
+      <div class="bi-val">${typeof it.val === 'number' ? fmtNum(it.val) + ' 万円' : it.val}</div>
+    </div>`).join('');
+  document.getElementById('bekke-area').innerHTML = `<div class="bekke-grid">${html}</div>`;
+}
+
+/** 全描画呼び出し */
+function renderAll(inp, result) {
+  renderSummary(result, inp);
+  renderCostTable(result);
+  renderBarChart(result);
+  renderDetailAccordion(result, inp);
+  renderQuantityTable(inp, result);
+  renderBekke(result, inp);
+}
+
+// ============================================================
+// エラー表示
+// ============================================================
+
+function showValidationErrors(errors) {
+  const el = document.getElementById('validation-errors');
+  el.style.display = 'block';
+  el.innerHTML = '<strong>入力エラーがあります：</strong><ul>' +
+    errors.map(e => `<li>${e}</li>`).join('') + '</ul>';
+}
+
+function clearValidationErrors() {
+  const el = document.getElementById('validation-errors');
+  el.style.display = 'none';
+  el.innerHTML = '';
+}
+
+// ============================================================
+// 印刷レポート
+// ============================================================
+
+/** 印刷用データ構築 */
+function buildReportData(inp, result) {
+  return { inp, result, details: calcDetails(inp, result) };
+}
+
+/** 解説付き帳票出力（7ページ構成・gaisan_ebisu.htmlスタイル） */
+function printReportFull() {
+  const d = window._reportData;
+  if (!d) { alert('まず計算を実行してください'); return; }
+  const { inp, result } = d;
+  const { items, directTotal, overhead, totalExTax, tax, totalInTax, derived } = result;
+
+  // ラベル変換
+  const accuracyLabel = { rough: '概算（誤差レンジ ±20%）', mid: '中程度（誤差レンジ ±15%）', fine: '精算（誤差レンジ ±10%）' };
+  const kisoLabel     = { independent: '独立基礎＋地中梁', mat: 'べた基礎（マット基礎）', strip: '布基礎' };
+  const bokaLabel     = { quasi: '準防火地域', fire: '防火地域', none: '防火指定なし' };
+  const kyuyuLabel    = { gas: 'ガス給湯器', ekiden: 'エコキュート（電気）', all: 'オール電化（ガスなし）' };
+  const gradeLabel    = { economy: '廉価（エコノミー）', standard: 'スタンダード', highgrade: 'ハイグレード' };
+  const accRng        = { rough: 0.20, mid: 0.15, fine: 0.10 };
+  const rng  = accRng[inp.accuracy] || 0.15;
+  const lo   = Math.round(totalExTax * (1 - rng));
+  const hi   = Math.round(totalExTax * (1 + rng));
+  const sqm  = inp.floorTotal > 0 ? Math.round(totalExTax / inp.floorTotal * 10000) : 0;
+  const unitCost = inp.units > 0 ? Math.round(totalExTax / inp.units) : 0;
+
+  // 擁壁情報
+  const yo = calc擁壁(inp);
+
+  // 月額賃料推定（3,500円/㎡）
+  const monthlyRent = Math.round(inp.unitArea * 3500);
+  const annualRent  = Math.round(inp.units * monthlyRent * 12 / 10000);
+  const yieldPct    = totalExTax > 0 ? (annualRent / totalExTax * 100).toFixed(1) : '0.0';
+
+  // 詳細内訳HTML（P5・P6用）
+  const details = d.details;
+  const itemHtml = (name) => {
+    const it = items.find(x => x.name === name);
+    if (!it) return '';
+    const rows = (details[name] || []).map(r => `
+      <tr>
+        <td style="border:1px solid #ccc;padding:4px 6px">${r.item}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">${typeof r.qty === 'number' ? r.qty.toLocaleString() : r.qty}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px;text-align:center">${r.unit}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">${r.up > 0 ? r.up.toLocaleString() : '-'}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">${r.kin > 0 ? fmtNum(r.kin) : '-'}</td>
+      </tr>`).join('');
+    return `<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:12px">
+      <h3 style="font-size:9.5pt;color:#1a3a6b;border-left:4px solid #1a3a6b;padding-left:8px;margin:0 0 4px;break-after:avoid;page-break-after:avoid">
+        工事${it.no}　${name}工事　　${fmtNum(it.val)} 万円</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:8pt;margin:0">
+        <thead style="display:table-header-group"><tr>
+          <th style="background:#2c5282;color:white;padding:4px 6px;text-align:left;border:1px solid #1a3a6b">工事内容</th>
+          <th style="background:#2c5282;color:white;padding:4px 6px;text-align:right;border:1px solid #1a3a6b;width:12%">数量</th>
+          <th style="background:#2c5282;color:white;padding:4px 6px;text-align:center;border:1px solid #1a3a6b;width:8%">単位</th>
+          <th style="background:#2c5282;color:white;padding:4px 6px;text-align:right;border:1px solid #1a3a6b;width:16%">単価（円）</th>
+          <th style="background:#2c5282;color:white;padding:4px 6px;text-align:right;border:1px solid #1a3a6b;width:14%">金額（万円）</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  };
+
+  const p5Names = ['仮設','杭','基礎','躯体','外装','内装'];
+  const p6Names = ['建具','電気','機械','EV','共用付帯','外構'];
+
+  // 総括表行
+  const totalTableRows = items.map(it => `
+    <tr>
+      <td style="text-align:center;border:1px solid #ccc;padding:4px 6px;background:white">${it.no}</td>
+      <td style="border:1px solid #ccc;padding:4px 6px;background:white">${it.name}工事</td>
+      <td style="text-align:right;border:1px solid #ccc;padding:4px 6px;background:white">${fmtNum(it.val)}</td>
+      <td style="text-align:right;border:1px solid #ccc;padding:4px 6px;background:white">${it.pct}%</td>
+    </tr>`).join('');
+
+  // コスト増減要因（条件に応じて動的生成）
+  const riskUp = [
+    inp.kuiType === 'phc' ? '地盤調査後の杭長・杭本数の増加' : null,
+    yo.total > 0 ? `擁壁工事（H=${inp.yoH}m・L=${inp.yoL}m）費用の設計詳細化による変動` : null,
+    inp.isCity ? '市街地搬出入割増・近隣対応コスト' : null,
+    inp.boka !== 'none' ? `${bokaLabel[inp.boka]}による建具・外壁の割増` : null,
+    '鋼材・生コン価格の市場変動（概算単価使用）',
+    '設計深度化による仕様変更・グレードアップ',
+  ].filter(Boolean);
+
+  const riskDown = [
+    `${inp.floors}階建て・RC造ラーメン構造の施工合理化`,
+    inp.kiso === 'independent' ? '独立基礎採用（べた基礎比コスト低減）' : null,
+    inp.units >= 10 ? `${inp.units}戸同一間取りの量産効果` : null,
+    inp.grade === 'economy' ? '廉価設備グレードの選択' : null,
+    '矩形・シンプル平面によるコスト低減',
+  ].filter(Boolean);
+
+  // 擁壁セクション（P3用）
+  const yoP3 = yo.total > 0 ? `
+    <h3>擁壁工事概要（工作物・外構内計上）</h3>
+    <table>
+      <tr><th style="width:30%">項目</th><th>内容</th></tr>
+      <tr><td>擁壁種別</td><td>RC片持式擁壁（宅地造成等規制法第9条・建築基準法施行令第142条準拠）</td></tr>
+      <tr><td>高低差</td><td>${inp.yoH}m（計画地が高い側・隣地が低い側）</td></tr>
+      <tr><td>延長</td><td>${inp.yoL}m</td></tr>
+      <tr><td>壁厚（根元）</td><td>${(yo.tBase * 1000).toFixed(0)}mm（H/10 = ${(inp.yoH / 10 * 1000).toFixed(0)}mm、最小200mm）</td></tr>
+      <tr><td>底版 幅×厚</td><td>${yo.bFoot.toFixed(2)}m × ${yo.dFoot.toFixed(2)}m（幅 ≥ 0.5H、厚 ≥ 0.1H）</td></tr>
+      <tr><td>コンクリート量</td><td>${yo.conV.toFixed(1)}㎥（壁体${yo.conWall.toFixed(1)} + 底版${yo.conFoot.toFixed(1)}）</td></tr>
+      <tr><td>鉄筋量</td><td>${(yo.rebarKg / 1000).toFixed(2)}t（80kg/㎥）</td></tr>
+      <tr><td>概算工事費</td><td><strong>${fmtNum(yo.total)}万円</strong>（外構工事に含む）</td></tr>
+    </table>
+    <div style="border-left:4px solid #c8960a;background:#fffbee;padding:7px 12px;margin:7px 0;font-size:8.5pt;line-height:1.7">
+      ※擁壁工事費は詳細設計・地盤条件・施工条件により変動します。配筋詳細・安定計算（転倒・滑動・支持力）は詳細設計で確認が必要です。
+    </div>` : '';
+
+  // 擁壁セクション（P7用）
+  const yoP7 = yo.total > 0 ? `
+    <h3>5-${inp.kuiType === 'phc' ? '5' : '4'}. 擁壁工事数量（RC片持式擁壁 H=${inp.yoH}m × L=${inp.yoL}m）</h3>
+    <p>宅地造成等規制法第9条により高さ2mを超える擁壁はRC造等の構造が必要です。建築基準法施行令第142条の仕様規定に基づき断面を設定しました。計画地が高い側のため、擁壁背面に土圧が作用します。</p>
+    <table>
+      <tr><th style="width:28%">部位・項目</th><th>算出式・根拠</th><th style="width:20%;text-align:right">数量</th></tr>
+      <tr><td>壁厚（根元）t_base</td><td>max(H/10, 200mm) = max(${(inp.yoH/10*1000).toFixed(0)}mm, 200mm)</td><td style="text-align:right">${(yo.tBase*1000).toFixed(0)}mm</td></tr>
+      <tr><td>壁厚（天端）t_top</td><td>最小壁厚（固定）</td><td style="text-align:right">200mm</td></tr>
+      <tr><td>底版幅 B_foot</td><td>max(0.5×H, 0.6m) = max(${(0.5*inp.yoH).toFixed(2)}m, 0.6m)</td><td style="text-align:right">${yo.bFoot.toFixed(2)}m</td></tr>
+      <tr><td>底版厚 D_foot</td><td>max(0.1×H, 0.3m) = max(${(0.1*inp.yoH).toFixed(3)}m, 0.3m)</td><td style="text-align:right">${(yo.dFoot*1000).toFixed(0)}mm</td></tr>
+      <tr><td>コンクリート（壁体）</td><td>(${(yo.tBase*1000).toFixed(0)}+200)/2÷1000×${inp.yoH}×${inp.yoL}m</td><td style="text-align:right">${yo.conWall.toFixed(1)}㎥</td></tr>
+      <tr><td>コンクリート（底版）</td><td>${yo.bFoot.toFixed(2)}×${yo.dFoot.toFixed(2)}×${inp.yoL}m</td><td style="text-align:right">${yo.conFoot.toFixed(1)}㎥</td></tr>
+      <tr style="background:#c8d8f0;font-weight:bold"><td colspan="2">コンクリート合計</td><td style="text-align:right">${yo.conV.toFixed(1)}㎥</td></tr>
+      <tr><td>鉄筋量</td><td>${yo.conV.toFixed(1)}㎥ × 80kg/㎥（RC擁壁標準）</td><td style="text-align:right">${yo.rebarKg.toFixed(0)}kg = ${(yo.rebarKg/1000).toFixed(2)}t</td></tr>
+      <tr><td>型枠面積</td><td>壁両面 2×${inp.yoH}m×${inp.yoL}m + 底版端部 2×${yo.dFoot.toFixed(2)}m×${inp.yoL}m</td><td style="text-align:right">${yo.formA.toFixed(1)}㎡</td></tr>
+      <tr><td>土工事（掘削・埋戻し）</td><td>${inp.yoL}m × ${yo.bFoot.toFixed(2)}m × (${inp.yoH}+${yo.dFoot.toFixed(2)})m × 3,000円</td><td style="text-align:right">${yo.dokoKin}万円</td></tr>
+    </table>
+    <div style="border-left:4px solid #2f855a;background:#f0fff6;padding:7px 12px;margin:7px 0;font-size:8.5pt">
+      転倒・滑動・支持力の安定計算は詳細設計で行います。地下水位が高い場合や軟弱地盤では断面が大きくなる場合があります。
+    </div>` : '';
+
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>工事費概算試算表 - ${inp.propName}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Yu Gothic","游ゴシック",Meiryo,sans-serif; font-size: 10pt; line-height: 1.65; color: #1a1a1a; background: #e8e8e8; }
+    .page { width: 210mm; min-height: 297mm; margin: 8mm auto; padding: 16mm 14mm 16mm 16mm; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
+    @media print {
+      body { background: white; }
+      .page { width: 100%; margin: 0; padding: 14mm 12mm 14mm 14mm; box-shadow: none; page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+    }
+    .ph { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #1a3a6b; border-bottom: 1px solid #aab; padding: 5px 0; margin-bottom: 14px; font-size: 8.5pt; color: #555; }
+    .pf { position: absolute; bottom: 10mm; right: 14mm; font-size: 8pt; color: #999; }
+    h2 { font-size: 11.5pt; color: white; background: #1a3a6b; padding: 6px 12px; margin: 14px 0 8px; letter-spacing: 1px; }
+    h3 { font-size: 10pt; color: #1a3a6b; border-left: 4px solid #1a3a6b; padding-left: 8px; margin: 12px 0 5px; }
+    h4 { font-size: 9.5pt; color: #2c5282; margin: 8px 0 3px; }
+    p { font-size: 9pt; line-height: 1.75; margin-bottom: 6px; text-align: justify; }
+    table { width: 100%; border-collapse: collapse; margin: 5px 0 10px; font-size: 8.5pt; }
+    th { background: #2c5282; color: white; padding: 5px 7px; text-align: center; font-size: 8.5pt; border: 1px solid #1a3a6b; }
+    td { padding: 4px 7px; border: 1px solid #ccc; vertical-align: middle; }
+    tr:nth-child(even) td { background: #f2f5fb; }
+    tr:nth-child(odd) td { background: #ffffff; }
+    .tr-total td { background: #1a3a6b !important; color: white; font-weight: bold; font-size: 9.5pt; }
+    .tr-sub td { background: #c8d8f0 !important; font-weight: bold; }
+    .td-r { text-align: right; }
+    .td-c { text-align: center; }
+    .box-blue { border: 2px solid #1a3a6b; background: #eef3fb; padding: 10px 14px; margin: 8px 0; border-radius: 3px; }
+    .box-yellow { border-left: 4px solid #c8960a; background: #fffbee; padding: 7px 12px; margin: 7px 0; font-size: 8.5pt; line-height: 1.7; }
+    .box-green { border-left: 4px solid #2f855a; background: #f0fff6; padding: 7px 12px; margin: 7px 0; font-size: 8.5pt; line-height: 1.7; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    ul.list { padding-left: 16px; font-size: 8.5pt; line-height: 1.9; }
+    .badge { display: inline-block; background: #2c5282; color: white; padding: 1px 7px; border-radius: 9px; font-size: 7.5pt; margin-right: 4px; }
+    /* ===== 改ページ制御 ===== */
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    h3 { break-after: avoid; page-break-after: avoid; }
+    h2 { break-after: avoid; page-break-after: avoid; }
+    .no-break { break-inside: avoid; page-break-inside: avoid; }
+  </style></head><body>
+
+  <!-- PAGE 1: 表紙 -->
+  <div class="page">
+    <div style="text-align:center;padding-top:20mm">
+      <div style="font-size:8.5pt;color:#888;letter-spacing:4px;margin-bottom:28px">CONSTRUCTION COST ESTIMATE ／ 初期計画段階</div>
+      <div style="border:3px solid #1a3a6b;padding:22px 30px;margin-bottom:28px">
+        <div style="font-size:20pt;font-weight:bold;color:#1a3a6b;letter-spacing:3px;margin-bottom:6px">工事費概算試算表</div>
+        <div style="font-size:13pt;color:#2c5282;margin-bottom:6px">${inp.propName}</div>
+        <div style="font-size:9.5pt;color:#666">RC造ラーメン構造　地上${inp.floors}階建　賃貸共同住宅</div>
+      </div>
+      <table style="width:auto;margin:0 auto 24px">
+        <tr><td style="border:none;color:#666;padding:4px 16px;text-align:right;font-size:9.5pt">所　在　地</td><td style="border:none;font-weight:bold;padding:4px 16px;font-size:9.5pt">${inp.propAddr}</td></tr>
+        <tr><td style="border:none;color:#666;padding:4px 16px;text-align:right;font-size:9.5pt">作　成　日</td><td style="border:none;font-weight:bold;padding:4px 16px;font-size:9.5pt">${inp.docdate}</td></tr>
+        <tr><td style="border:none;color:#666;padding:4px 16px;text-align:right;font-size:9.5pt">試算の精度</td><td style="border:none;font-weight:bold;padding:4px 16px;font-size:9.5pt">${accuracyLabel[inp.accuracy] || inp.accuracy}</td></tr>
+        <tr><td style="border:none;color:#666;padding:4px 16px;text-align:right;font-size:9.5pt">金額表示</td><td style="border:none;font-weight:bold;padding:4px 16px;font-size:9.5pt">消費税抜き（税抜表示）</td></tr>
+        ${inp.companyName ? `<tr><td style="border:none;color:#666;padding:4px 16px;text-align:right;font-size:9.5pt">試　算　者</td><td style="border:none;font-weight:bold;padding:4px 16px;font-size:9.5pt">${inp.companyName}</td></tr>` : ''}
+      </table>
+      <div class="box-blue" style="max-width:380px;margin:0 auto;text-align:left">
+        <div style="font-size:8.5pt;color:#2c5282;margin-bottom:4px">概算工事費合計（税抜）</div>
+        <div style="font-size:22pt;font-weight:bold;color:#1a3a6b;line-height:1.1">${fmtNum(totalExTax)} 万円</div>
+        <div style="font-size:8pt;color:#666;margin-top:4px">想定レンジ：${fmtNum(lo)} 〜 ${fmtNum(hi)} 万円</div>
+        <div style="font-size:8pt;color:#555;margin-top:6px;line-height:1.9">
+          ㎡単価：${sqm.toLocaleString()}円/㎡　|　1戸単価：${fmtNum(unitCost)}万円/戸<br>
+          消費税（10%）：${fmtNum(tax)}万円　|　税込総額：${fmtNum(totalInTax)}万円
+        </div>
+      </div>
+      <div style="border-top:1px solid #ccc;padding-top:14px;margin-top:20px;text-align:left;font-size:8.5pt;color:#888;line-height:1.9">
+        ■ 本資料の取り扱いについて<br>
+        本試算表は初期計画段階における施主の意思決定支援を目的として作成したものです。<br>
+        詳細設計・地盤調査・施工会社見積等を経て確定するものではなく、参考情報としてご活用ください。<br>
+        記載の数量・単価は概算用途の参考値です。
+      </div>
+    </div>
+    <div class="pf">1 ／ 7</div>
+  </div>
+
+  <!-- PAGE 2: 本試算書について -->
+  <div class="page">
+    <div class="ph"><span>工事費概算試算表｜${inp.propName}</span><span>${inp.docdate}</span></div>
+    <h2>1. 本試算書について</h2>
+    <h3>1-1. 試算の目的と位置づけ</h3>
+    <p>本試算書は、RC造賃貸共同住宅の初期計画段階において、事業費の規模感を把握し、資金計画・事業収支検討の判断材料を提供することを目的としています。設計図面が確定していない段階での作成であるため、<strong>精度は±${rng * 100}%程度</strong>を想定しており、詳細設計・地盤調査・施工会社見積によって増減します。</p>
+    <h3>1-2. 試算方法の特徴</h3>
+    <p>本試算では、単純な「延床面積×㎡単価」による一括計算ではなく、<strong>各工事の数量を個別に算出し、単価を乗じる積み上げ方式</strong>を採用しています。これにより、設計条件の変更が工事費のどの部分にどう影響するかを追跡しやすくしています。</p>
+    <h3>1-3. 数量算出の情報源と確度</h3>
+    <table>
+      <tr><th style="width:30%">情報源</th><th>活用内容</th><th style="width:18%">確度</th></tr>
+      <tr><td>入力確定情報</td><td>延床面積・建築面積・住戸数・住戸面積・階高・設備仕様等</td><td class="td-c">高（確定値）</td></tr>
+      <tr><td>ヒアリング結果</td><td>グレード・EV・杭・外壁仕様・給湯方式・擁壁の有無等</td><td class="td-c">中</td></tr>
+      <tr><td>実務的仮定値</td><td>外周長・柱本数・梁断面・配管延長・杭長等</td><td class="td-c" style="color:#c00">低〜中</td></tr>
+      <tr><td>係数法（RC標準）</td><td>コン量0.47㎥/㎡・鉄筋120kg/㎥・型枠3.0㎡/㎡</td><td class="td-c">中（工種間差あり）</td></tr>
+    </table>
+    <div class="box-yellow"><strong>【仮定値の影響について】</strong>　確度「低〜中」の実務的仮定値は、詳細設計段階で実測値に置き換える必要があります。特に<strong>外周長（外壁面積に直結）</strong>と<strong>杭長・杭本数（地盤調査後に確定）</strong>の2点が概算精度に大きく影響します。</div>
+    <h3>1-4. 主要な設計条件（採用値一覧）</h3>
+    <table>
+      <tr><th style="width:35%">条件項目</th><th style="width:40%">採用値</th><th>備考</th></tr>
+      <tr><td>構造形式</td><td><strong>RC造ラーメン構造</strong></td><td>—</td></tr>
+      <tr><td>階高</td><td><strong>${inp.floorH}m（全階共通）</strong></td><td>建物高さ ${(inp.floorH * inp.floors).toFixed(1)}m</td></tr>
+      <tr><td>基礎形式</td><td><strong>${kisoLabel[inp.kiso] || inp.kiso}</strong></td><td>${inp.kuiType === 'phc' ? `PHC杭φ${inp.kuiD}×${inp.kuiN}本×L${inp.kuiL}m` : '杭なし'}</td></tr>
+      <tr><td>外壁仕上げ</td><td>タイル${inp.tilePct}% ／ 吹付塗装${100 - inp.tilePct}%</td><td>${bokaLabel[inp.boka] || inp.boka}適用</td></tr>
+      <tr><td>バルコニー</td><td>${inp.hasBalc ? `あり　延長${inp.balcL}m` : 'なし'}</td><td>—</td></tr>
+      <tr><td>住戸設備グレード</td><td><strong>${gradeLabel[inp.grade] || inp.grade}</strong></td><td>UB・洗面・便器・キッチン・給湯器</td></tr>
+      <tr><td>給湯方式</td><td>${kyuyuLabel[inp.kyuyu] || inp.kyuyu}</td><td>—</td></tr>
+      <tr><td>エレベーター</td><td>${inp.evN > 0 ? `${inp.evN}台（${inp.evStop}停止）` : 'なし'}</td><td>—</td></tr>
+      ${yo.total > 0 ? `<tr><td>擁壁工事</td><td style="color:#c00"><strong>あり　H=${inp.yoH}m × L=${inp.yoL}m</strong></td><td>RC片持式（外構に計上）</td></tr>` : ''}
+      <tr><td>外周長（仮定）</td><td style="color:#c00">${inp.perimeter}m（仮定値）</td><td>建築面積${inp.buildArea}㎡より推定</td></tr>
+    </table>
+    <h3>1-5. 試算に含まれていない費用（別途）</h3>
+    <table>
+      <tr><th>費用項目</th><th>概算目安</th><th>備考</th></tr>
+      <tr><td>設計料・工事監理料</td><td>工事費の5〜8%　約${fmtNum(Math.round(totalExTax * 0.065))}万円</td><td>基本設計・実施設計・監理</td></tr>
+      <tr><td>地盤調査費</td><td>50〜100万円</td><td>ボーリング調査</td></tr>
+      <tr><td>各種申請費</td><td>50〜100万円</td><td>確認申請・登記等</td></tr>
+      <tr><td>消費税（10%）</td><td>${fmtNum(tax)}万円</td><td>—</td></tr>
+    </table>
+    <div class="pf">2 ／ 7</div>
+  </div>
+
+  <!-- PAGE 3: 建築計画概要 -->
+  <div class="page">
+    <div class="ph"><span>工事費概算試算表｜${inp.propName}</span><span>${inp.docdate}</span></div>
+    <h2>2. 建築計画概要</h2>
+    <table>
+      <tr>
+        <th style="width:22%">項目</th><th style="width:28%">内容</th>
+        <th style="width:22%">項目</th><th style="width:28%">内容</th>
+      </tr>
+      <tr><td>計画名称</td><td>${inp.propName}</td><td>用途</td><td>共同住宅（賃貸）</td></tr>
+      <tr><td>所在地</td><td colspan="3">${inp.propAddr}</td></tr>
+      <tr><td>敷地面積</td><td>${inp.siteArea} ㎡</td><td>構造</td><td>RC造ラーメン構造</td></tr>
+      <tr><td>建築面積</td><td>${inp.buildArea} ㎡</td><td>基礎形式</td><td>${kisoLabel[inp.kiso] || inp.kiso}</td></tr>
+      <tr><td>容積対象延床</td><td>${inp.floorVol} ㎡</td><td>階高</td><td>${inp.floorH}m（全階共通）</td></tr>
+      <tr><td>概算用延床面積</td><td><strong>${inp.floorTotal} ㎡</strong></td><td>建物高さ</td><td>約 ${(inp.floorH * inp.floors).toFixed(1)}m</td></tr>
+      <tr><td>住戸数</td><td><strong>${inp.units} 戸</strong></td><td>住戸タイプ</td><td>ワンルーム・1K</td></tr>
+      <tr><td>住戸面積</td><td>平均 ${inp.unitArea} ㎡/戸</td><td>EV</td><td>${inp.evN > 0 ? `${inp.evN}台（${inp.evStop}停止）` : 'なし'}</td></tr>
+      <tr><td>防火指定</td><td>${bokaLabel[inp.boka] || inp.boka}</td><td>地域区分</td><td>${inp.isCity ? '市街地' : '郊外'}</td></tr>
+      ${inp.kuiType === 'phc' ? `<tr><td>杭工事</td><td colspan="3">PHC杭 φ${inp.kuiD}mm × ${inp.kuiN}本 × L${inp.kuiL}m</td></tr>` : ''}
+    </table>
+    ${yoP3}
+    <h3>収益参考（初期試算）</h3>
+    <table>
+      <tr><th>項目</th><th>条件</th><th class="td-r">金額</th></tr>
+      <tr><td>想定月額賃料（1戸）</td><td>平均${inp.unitArea}㎡ × 3,500円/㎡（推定）</td><td class="td-r">${(monthlyRent / 10000).toFixed(1)}万円／月</td></tr>
+      <tr><td>想定年間収入（満室）</td><td>${inp.units}戸 × ${(monthlyRent / 10000).toFixed(1)}万円 × 12ヶ月</td><td class="td-r">${fmtNum(annualRent)}万円／年</td></tr>
+      <tr><td>工事費（税抜）</td><td>本試算</td><td class="td-r">${fmtNum(totalExTax)}万円</td></tr>
+      <tr><td>表面利回り（参考）</td><td>年間収入 ÷ 工事費</td><td class="td-r"><strong>約${yieldPct}%</strong></td></tr>
+    </table>
+    <div class="box-green" style="font-size:8pt">※ 表面利回りは工事費のみに対する計算です。土地取得費・設計費・消費税・諸費用を含む総事業費ベースでは利回りが下がります。空室率・管理費・修繕積立等を加味した実質利回りで収支を検討ください。</div>
+    <div class="pf">3 ／ 7</div>
+  </div>
+
+  <!-- PAGE 4: 工事費総括 -->
+  <div class="page">
+    <div class="ph"><span>工事費概算試算表｜${inp.propName}</span><span>${inp.docdate}</span></div>
+    <h2>3. 工事費概算　総括表</h2>
+    <div class="box-blue" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:8.5pt;color:#2c5282;margin-bottom:2px">概算工事費合計（税抜）</div>
+          <div style="font-size:22pt;font-weight:bold;color:#1a3a6b;line-height:1.1">${fmtNum(totalExTax)} 万円</div>
+          <div style="font-size:8pt;color:#666;margin-top:3px">想定レンジ：${fmtNum(lo)} 〜 ${fmtNum(hi)}万円（±${rng * 100}%）</div>
+        </div>
+        <div style="text-align:right;font-size:9pt;line-height:2.1">
+          <div>㎡単価（延床${inp.floorTotal}㎡比）：<strong>${sqm.toLocaleString()} 円/㎡</strong></div>
+          <div>1戸あたり単価　　　：<strong>${fmtNum(unitCost)} 万円/戸</strong></div>
+          <div>消費税（10%）　　　：<strong>＋ ${fmtNum(tax)}万円</strong></div>
+          <div>税込概算総額　　　：<strong>約 ${fmtNum(totalInTax)}万円</strong></div>
+        </div>
+      </div>
+    </div>
+    <table>
+      <tr><th style="width:6%">No.</th><th>工事項目</th><th style="width:20%;text-align:right">金額（万円）</th><th style="width:12%;text-align:right">構成比</th></tr>
+      ${totalTableRows}
+      <tr class="tr-sub"><td colspan="2" class="td-r">直接工事費　合計</td><td class="td-r">${fmtNum(directTotal)}</td><td class="td-r">100%</td></tr>
+      <tr><td colspan="2" class="td-r">諸経費（現場管理費＋一般管理費　${inp.overheadPct}%）</td><td class="td-r">${fmtNum(overhead)}</td><td class="td-r">—</td></tr>
+      <tr class="tr-total"><td colspan="2" class="td-r">工　事　費　合　計　（税抜）</td><td class="td-r">${fmtNum(totalExTax)}</td><td class="td-r">—</td></tr>
+    </table>
+    <h3>コスト増減要因</h3>
+    <div class="two-col">
+      <div>
+        <h4>▲ コスト増要因</h4>
+        <ul class="list">${riskUp.map(r => `<li>${r}</li>`).join('')}</ul>
+      </div>
+      <div>
+        <h4>▼ コスト減要因</h4>
+        <ul class="list">${riskDown.map(r => `<li>${r}</li>`).join('')}</ul>
+      </div>
+    </div>
+    <div class="box-yellow" style="margin-top:10px">
+      <strong>【精度向上のための次のステップ】</strong><br>
+      ①地盤調査（ボーリング）実施 → 杭長・杭本数確定<br>
+      ②基本設計図（平面・断面・立面）完成 → 外周長・各部数量を実測値に更新<br>
+      ③施工会社ヒアリング見積（2〜3社） → 本試算との乖離を検証<br>
+      以上のステップを経ることで、概算精度を<strong>±5%程度</strong>まで向上させることができます。
+    </div>
+    <div class="pf">4 ／ 7</div>
+  </div>
+
+  <!-- PAGE 5: 詳細内訳① -->
+  <div class="page">
+    <div class="ph"><span>工事費概算試算表｜${inp.propName}</span><span>${inp.docdate}</span></div>
+    <h2>4. 工事費詳細内訳①</h2>
+    ${p5Names.map(n => itemHtml(n)).join('')}
+    <div class="pf">5 ／ 7</div>
+  </div>
+
+  <!-- PAGE 6: 詳細内訳② -->
+  <div class="page">
+    <div class="ph"><span>工事費概算試算表｜${inp.propName}</span><span>${inp.docdate}</span></div>
+    <h2>4. 工事費詳細内訳②</h2>
+    ${p6Names.map(n => itemHtml(n)).join('')}
+    <div class="pf">6 ／ 7</div>
+  </div>
+
+  <!-- PAGE 7: 数量算出根拠 -->
+  <div class="page">
+    <div class="ph"><span>工事費概算試算表｜${inp.propName}</span><span>${inp.docdate}</span></div>
+    <h2>5. 数量算出の根拠・考え方</h2>
+    <h3>5-1. コンクリート量（上部躯体 ${derived.conV.toFixed(1)}㎥）</h3>
+    <p>RCラーメン構造のコンクリート量は延床面積に対する係数（0.47㎥/㎡）を用いた係数法で算出しました。RC標準係数（0.45〜0.55の中間値）を採用しています。</p>
+    <table>
+      <tr><th style="width:28%">部位</th><th>算出式・根拠</th><th style="width:18%;text-align:right">数量（㎥）</th></tr>
+      <tr><td>コンクリート量（係数法）</td><td>延床${inp.floorTotal}㎡ × 0.47㎥/㎡（RC標準係数）</td><td class="td-r">${derived.conV.toFixed(1)}</td></tr>
+      <tr style="background:#c8d8f0;font-weight:bold"><td colspan="2">上部躯体合計</td><td class="td-r">${derived.conV.toFixed(1)}</td></tr>
+    </table>
+    <div class="box-green">係数法（${derived.conV.toFixed(1)}㎥）はRC標準的な配合比率を用いています。詳細設計後に積み上げ計算（スラブ・柱・梁・壁）と照合して精度を確認します。</div>
+    <h3>5-2. 鉄筋量（${derived.rebarT.toFixed(2)}t）・型枠面積（${derived.formA.toFixed(0)}㎡）</h3>
+    <table>
+      <tr><th style="width:28%">部位</th><th>算出式・根拠</th><th style="width:18%;text-align:right">数量</th></tr>
+      <tr><td>鉄筋（上部躯体）</td><td>${derived.conV.toFixed(1)}㎥ × 120kg/㎥（RC標準係数 100〜140の中間値）</td><td class="td-r">${derived.rebarT.toFixed(2)}t</td></tr>
+      <tr><td>型枠（上部躯体）</td><td>延床${inp.floorTotal}㎡ × 3.0㎡/㎡（標準係数 2.5〜3.5の中間値）</td><td class="td-r">${derived.formA.toFixed(0)}㎡</td></tr>
+    </table>
+    <h3>5-3. 外壁面積（正味 ${derived.wallA.toFixed(0)}㎡）</h3>
+    <p>外壁面積は「外周長×建物高さ（グロス）」から窓・出入口等の開口部面積を差し引いて算出します。外周長は<strong>仮定値${inp.perimeter}m</strong>を用いています。</p>
+    <table>
+      <tr><th style="width:38%">算出項目</th><th>算出式・根拠</th><th style="width:18%;text-align:right">面積（㎡）</th></tr>
+      <tr><td>外壁グロス面積</td><td>外周長${inp.perimeter}m × 建物高さ${derived.bldH.toFixed(1)}m</td><td class="td-r">${(inp.perimeter * derived.bldH).toFixed(0)}</td></tr>
+      <tr><td>開口部控除（20%）</td><td>住戸サッシ・共用開口等</td><td class="td-r">▲ ${((inp.perimeter * derived.bldH) * 0.20).toFixed(0)}</td></tr>
+      <tr style="background:#c8d8f0;font-weight:bold"><td colspan="2">外壁正味面積</td><td class="td-r">${derived.wallA.toFixed(0)}</td></tr>
+      <tr><td>　うち タイル（${inp.tilePct}%）</td><td>正味${derived.wallA.toFixed(0)}㎡ × ${inp.tilePct}%</td><td class="td-r">${(derived.wallA * inp.tilePct / 100).toFixed(0)}</td></tr>
+      <tr><td>　うち 吹付塗装（${100 - inp.tilePct}%）</td><td>正味${derived.wallA.toFixed(0)}㎡ × ${100 - inp.tilePct}%</td><td class="td-r">${(derived.wallA * (100 - inp.tilePct) / 100).toFixed(0)}</td></tr>
+    </table>
+    <div class="box-yellow">外周長${inp.perimeter}mは仮定値です。平面図詳細確定後に実寸で更新すると精度が向上します。外周長が±5m変わると外装工事費は概ね±50万円程度影響します。</div>
+    ${inp.kuiType === 'phc' ? `
+    <h3>5-4. 杭工事（PHC杭 φ${inp.kuiD}mm × ${inp.kuiN}本 × L${inp.kuiL}m）</h3>
+    <p>杭本数はRC造の柱位置に基づく仮定値です。杭長は地盤調査（ボーリング）後に確定します。地盤条件次第で杭工事費が大きく変動することがあります。</p>
+    <div class="box-yellow"><strong>【杭の精度向上について】</strong>　地盤調査実施後、杭径・杭長・本数・工法（PHC杭・場所打ち杭等）を確定することで、杭工事費の精度が大幅に向上します。地盤条件次第では±300〜500万円変動することがあります。</div>` : ''}
+    ${yoP7}
+    <div style="border-top:1px solid #ccc;margin-top:14px;padding-top:10px;font-size:8pt;color:#888;line-height:1.9">
+      本試算書は一級建築士レベルの実務知識に基づき作成していますが、最終的な工事費は詳細設計・地盤調査・施工会社見積によって確定します。<br>
+      本資料の利用による損害について、作成者は一切の責任を負いません。
+    </div>
+    <div class="pf">7 ／ 7</div>
+  </div>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 600);
+}
+
+/** 概算書のみ 出力（4ページ構成） */
+function printReportSimple() {
+  const d = window._reportData;
+  if (!d) { alert('まず計算を実行してください'); return; }
+  const { inp, result } = d;
+  const { items, directTotal, overhead, totalExTax, tax, totalInTax } = result;
+
+  // 各工事の詳細セクションHTML（break-inside: avoid でラップ）
+  const simpleItemHtml = (name) => {
+    const it = items.find(x => x.name === name);
+    if (!it) return '';
+    const rows = (d.details[name] || []).map(r => `
+      <tr style="break-inside:avoid;page-break-inside:avoid">
+        <td>${r.item}</td>
+        <td style="text-align:right">${typeof r.qty === 'number' ? r.qty.toLocaleString() : r.qty}</td>
+        <td style="text-align:center">${r.unit}</td>
+        <td style="text-align:right">${r.up > 0 ? r.up.toLocaleString() : '-'}</td>
+        <td style="text-align:right">${r.kin > 0 ? fmtNum(r.kin) : '-'}</td>
+      </tr>`).join('');
+    return `<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:12px">
+      <h4 style="margin:0 0 3px;color:#1a3a6b;font-size:10.5px;break-after:avoid;page-break-after:avoid">${it.no}. ${it.name}工事　${fmtNum(it.val)} 万円</h4>
+      <table style="font-size:9px">
+        <thead style="display:table-header-group"><tr style="background:#dce8f8">
+          <th style="text-align:left;font-weight:bold;color:#1a3a6b;background:#dce8f8">工事内容</th>
+          <th style="text-align:right;font-weight:bold;color:#1a3a6b;background:#dce8f8;width:11%">数量</th>
+          <th style="font-weight:bold;color:#1a3a6b;background:#dce8f8;width:7%">単位</th>
+          <th style="text-align:right;font-weight:bold;color:#1a3a6b;background:#dce8f8;width:15%">単価（円）</th>
+          <th style="text-align:right;font-weight:bold;color:#1a3a6b;background:#dce8f8;width:13%">金額（万円）</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  };
+
+  const accTable = items.map(it => `
+    <tr style="break-inside:avoid;page-break-inside:avoid">
+      <td style="text-align:center">${it.no}</td><td>${it.name}工事</td>
+      <td style="text-align:right">${fmtNum(it.val)}</td>
+      <td style="text-align:right">${it.pct}%</td>
+    </tr>`).join('');
+
+  const sqm = inp.floorTotal > 0 ? Math.round(totalExTax / inp.floorTotal * 10000) : 0;
+
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+    <title>工事費概算報告書 - ${inp.propName}</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: "Yu Gothic",Meiryo,sans-serif; font-size: 10pt; color: #1a1a1a; background: #e8e8e8; }
+      .page { width: 210mm; min-height: 297mm; margin: 8mm auto; padding: 16mm 14mm; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: relative; }
+      @media print {
+        body { background: white; }
+        .page { width: 100%; margin: 0; padding: 14mm 12mm; box-shadow: none; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+      }
+      table { width: 100%; border-collapse: collapse; margin: 4px 0 0; font-size: 9pt; }
+      td, th { padding: 4px 7px; border: 1px solid #ccc; vertical-align: middle; }
+      th { background: #2c5282; color: white; font-size: 9pt; }
+      tr:nth-child(even) td { background: #f2f5fb; }
+      tr:nth-child(odd) td { background: #fff; }
+      /* 改ページ制御 */
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      tr { break-inside: avoid; page-break-inside: avoid; }
+      h2 { break-after: avoid; page-break-after: avoid; }
+      h3 { break-after: avoid; page-break-after: avoid; }
+      h4 { break-after: avoid; page-break-after: avoid; }
+      /* スタイル */
+      h2 { font-size: 11pt; color: white; background: #1a3a6b; padding: 5px 12px; margin: 12px 0 8px; }
+      h3 { font-size: 10pt; color: #1a3a6b; border-left: 4px solid #1a3a6b; padding-left: 8px; margin: 10px 0 5px; }
+      .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 265mm; }
+      .cover-title { font-size: 22pt; font-weight: bold; color: #1a3a6b; }
+      .tr-sub td { background: #c8d8f0 !important; font-weight: bold; }
+      .tr-total td { background: #1a3a6b !important; color: white; font-weight: bold; }
+      .pf { position: absolute; bottom: 10mm; right: 14mm; font-size: 8pt; color: #999; }
+    </style>
+  </head><body>
+  <!-- P1: 表紙 -->
+  <div class="page cover">
+    <div style="border:3px solid #1a3a6b;padding:20px 36px;margin-bottom:24px;text-align:center">
+      <div class="cover-title" style="margin-bottom:6px">工事費概算報告書</div>
+      <div style="font-size:13pt;color:#2c5282">${inp.propName}</div>
+      <div style="font-size:9pt;color:#666;margin-top:4px">RC造ラーメン構造　地上${inp.floors}階建　賃貸共同住宅</div>
+    </div>
+    <table style="width:auto;border-collapse:collapse;margin-bottom:24px">
+      <tr><td style="border:none;color:#666;padding:3px 14px;text-align:right">所　在　地</td><td style="border:none;font-weight:bold;padding:3px 14px">${inp.propAddr}</td></tr>
+      <tr><td style="border:none;color:#666;padding:3px 14px;text-align:right">作　成　日</td><td style="border:none;font-weight:bold;padding:3px 14px">${inp.docdate}</td></tr>
+      <tr><td style="border:none;color:#666;padding:3px 14px;text-align:right">地域区分</td><td style="border:none;font-weight:bold;padding:3px 14px">${inp.isCity ? '市街地' : '郊外'}</td></tr>
+      ${inp.companyName ? `<tr><td style="border:none;color:#666;padding:3px 14px;text-align:right">試　算　者</td><td style="border:none;font-weight:bold;padding:3px 14px">${inp.companyName}</td></tr>` : ''}
+    </table>
+    <div style="border:2px solid #1a3a6b;background:#eef3fb;padding:14px 24px;border-radius:3px;text-align:center">
+      <div style="font-size:9pt;color:#2c5282;margin-bottom:4px">概算工事費合計（税抜）</div>
+      <div style="font-size:24pt;font-weight:bold;color:#1a3a6b">${fmtNum(totalExTax)} 万円</div>
+      <div style="font-size:9pt;color:#555;margin-top:8px;line-height:2">
+        消費税（10%）：${fmtNum(tax)}万円　|　税込総額：${fmtNum(totalInTax)}万円<br>
+        ㎡単価：${sqm.toLocaleString()}円/㎡　|　1戸単価：${fmtNum(inp.units > 0 ? Math.round(totalExTax / inp.units) : 0)}万円/戸
+      </div>
+    </div>
+    <div style="margin-top:16px;font-size:8pt;color:#888;line-height:1.8;text-align:center">
+      ※本資料はRC賃貸マンション工事費概算ツールにより試算した参考値です。<br>
+      実際の工事費は設計内容・地盤条件・施工条件・市場動向等により変動します。
+    </div>
+    <div class="pf">1 ／ 4</div>
+  </div>
+  <!-- P2: 建物概要・工事費総括 -->
+  <div class="page">
+    <h2>建物概要・工事費総括</h2>
+    <h3>建物概要</h3>
+    <div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:12px">
+      <table>
+        <tbody>
+          <tr><td>延床面積</td><td>${inp.floorTotal} ㎡</td><td>建築面積</td><td>${inp.buildArea} ㎡</td></tr>
+          <tr><td>敷地面積</td><td>${inp.siteArea} ㎡</td><td>容積対象延床</td><td>${inp.floorVol} ㎡</td></tr>
+          <tr><td>階数</td><td>${inp.floors} 階</td><td>階高</td><td>${inp.floorH} m</td></tr>
+          <tr><td>住戸数</td><td>${inp.units} 戸</td><td>住戸平均面積</td><td>${inp.unitArea} ㎡/戸</td></tr>
+          <tr><td>基礎形式</td><td>${inp.kiso}</td><td>杭工事</td><td>${inp.kuiType === 'phc' ? `PHC杭φ${inp.kuiD}×${inp.kuiN}本×L${inp.kuiL}m` : 'なし'}</td></tr>
+          <tr><td>設備グレード</td><td>${inp.grade}</td><td>給湯方式</td><td>${inp.kyuyu}</td></tr>
+          ${inp.yoH > 0 && inp.yoL > 0 ? `<tr><td>擁壁工事</td><td colspan="3">RC片持式 H=${inp.yoH}m × L=${inp.yoL}m（外構に含む）</td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>
+    <h3>工事費総括表</h3>
+    <div style="break-inside:avoid;page-break-inside:avoid">
+      <table>
+        <thead style="display:table-header-group"><tr><th style="text-align:center;width:8%">No</th><th>工事名</th><th style="text-align:right;width:22%">金額（万円）</th><th style="text-align:right;width:13%">構成比</th></tr></thead>
+        <tbody>
+          ${accTable}
+          <tr class="tr-sub"><td colspan="2" style="text-align:right">直接工事費 計</td><td style="text-align:right">${fmtNum(directTotal)}</td><td style="text-align:right">100%</td></tr>
+          <tr><td colspan="2" style="text-align:right">諸経費（${inp.overheadPct}%）</td><td style="text-align:right">${fmtNum(overhead)}</td><td style="text-align:right">—</td></tr>
+          <tr class="tr-total"><td colspan="2" style="text-align:right;color:white">工事費合計（税抜）</td><td style="text-align:right;color:white">${fmtNum(totalExTax)}</td><td style="text-align:right;color:white">—</td></tr>
+          <tr><td colspan="2" style="text-align:right">消費税（10%）</td><td style="text-align:right">${fmtNum(tax)}</td><td style="text-align:right">—</td></tr>
+          <tr class="tr-total"><td colspan="2" style="text-align:right;color:white">工事費合計（税込）</td><td style="text-align:right;color:white">${fmtNum(totalInTax)}</td><td style="text-align:right;color:white">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pf">2 ／ 4</div>
+  </div>
+  <!-- P3: 詳細内訳① 工事1〜6 -->
+  <div class="page">
+    <h2>工事費詳細内訳①</h2>
+    ${'仮設,杭,基礎,躯体,外装,内装'.split(',').map(n => simpleItemHtml(n)).join('')}
+    <div class="pf">3 ／ 4</div>
+  </div>
+  <!-- P4: 詳細内訳② 工事7〜12 -->
+  <div class="page">
+    <h2>工事費詳細内訳②</h2>
+    ${'建具,電気,機械,EV,共用付帯,外構'.split(',').map(n => simpleItemHtml(n)).join('')}
+    <p style="margin-top:14px;font-size:8pt;color:#888">
+      ※本資料はRC賃貸マンション工事費概算ツールにより試算した参考値です。実際の工事費は設計内容・施工条件・市場動向等により変動します。
+    </p>
+    <div class="pf">4 ／ 4</div>
+  </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 500);
+}
+
+// ============================================================
+// メインエントリーポイント
+// ============================================================
+
+function onInputChange() {
+  clearValidationErrors();
+  const inp    = readInputs();
+  const errors = validate(inp);
+  if (errors.length) { showValidationErrors(errors); return; }
+  const result = calculateAll(inp);
+  renderAll(inp, result);
+  window._reportData = buildReportData(inp, result);
+}
+
+// ============================================================
+// 杭・バルコニー 表示切替
+// ============================================================
+
+function updateConditionalBlocks() {
+  // 杭パラメータ表示切替
+  const kuiType = document.querySelector('input[name="kuiType"]:checked');
+  const kuiParams = document.getElementById('kui-params');
+  if (kuiParams) kuiParams.style.display = (kuiType && kuiType.value === 'phc') ? 'block' : 'none';
+  // バルコニーパラメータ表示切替
+  const hasBalc = document.querySelector('input[name="hasBalc"]:checked');
+  const balcParams = document.getElementById('balc-params');
+  if (balcParams) balcParams.style.display = (hasBalc && hasBalc.value === 'yes') ? 'block' : 'none';
+}
+
+// ============================================================
+// リセット機能
+// ============================================================
+
+function resetForm() {
+  // 基本情報
+  document.getElementById('propName').value  = '〇〇マンション';
+  document.getElementById('propAddr').value  = '東京都〇〇区';
+  document.getElementById('docdate').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('accuracy').value  = 'mid';
+  document.querySelector('input[name="areaType"][value="city"]').checked = true;
+  document.querySelector('input[name="boka"][value="quasi"]').checked    = true;
+  // 建物規模
+  document.getElementById('siteArea').value   = '233';
+  document.getElementById('buildArea').value  = '138';
+  document.getElementById('floorTotal').value = '370';
+  document.getElementById('floorVol').value   = '293';
+  document.getElementById('floors').value     = '3';
+  document.getElementById('floorH').value     = '3.0';
+  document.getElementById('units').value      = '14';
+  document.getElementById('unitArea').value   = '21';
+  document.getElementById('loftArea').value   = '70';
+  // 基礎・杭
+  document.querySelector('input[name="kiso"][value="independent"]').checked = true;
+  document.querySelector('input[name="kuiType"][value="phc"]').checked      = true;
+  document.getElementById('kuiD').value = '450';
+  document.getElementById('kuiN').value = '14';
+  document.getElementById('kuiL').value = '12';
+  // 外装
+  document.getElementById('perimeter').value = '50';
+  document.getElementById('tilePct').value   = '50';
+  document.querySelector('input[name="hasBalc"][value="yes"]').checked = true;
+  document.getElementById('balcL').value = '20';
+  // 設備
+  document.getElementById('grade').value  = 'standard';
+  document.getElementById('ubSize').value = '1116';
+  document.querySelector('input[name="kyuyu"][value="gas"]').checked = true;
+  document.getElementById('hasAutolock').checked  = false;
+  document.getElementById('hasCamera').checked    = true;
+  document.getElementById('hasDelivery').checked  = false;
+  document.getElementById('hasPump').checked      = true;
+  // EV・外構
+  document.getElementById('evN').value    = '1';
+  document.getElementById('evStop').value = '3';
+  document.getElementById('carN').value   = '1';
+  document.getElementById('bikeN').value  = '14';
+  document.getElementById('yoH').value    = '0';
+  document.getElementById('yoL').value    = '0';
+  // 単価調整
+  document.getElementById('upCon').value      = '38000';
+  document.getElementById('upRebar').value    = '270000';
+  document.getElementById('upForm').value     = '14000';
+  document.getElementById('overheadPct').value = '12';
+
+  updateConditionalBlocks();
+  onInputChange();
+}
+
+// ============================================================
+// AI平面図解析
+// ============================================================
+
+/** ファイルをbase64文字列に変換 */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/** プレビュー表示更新 */
+function updatePlanPreview() {
+  const files = document.getElementById('planFile').files;
+  const container = document.getElementById('plan-preview');
+  container.innerHTML = '';
+  Array.from(files).forEach(file => {
+    if (file.type.startsWith('image/')) {
+      const img = document.createElement('img');
+      img.className = 'thumb-item';
+      img.src = URL.createObjectURL(file);
+      img.title = file.name;
+      container.appendChild(img);
+    } else {
+      // PDF等は名前表示
+      const span = document.createElement('div');
+      span.style.cssText = 'font-size:10px;padding:4px;background:#e8eef6;border-radius:3px;word-break:break-all;max-width:160px';
+      span.textContent = '📄 ' + file.name;
+      container.appendChild(span);
+    }
+  });
+}
+
+/** AI解析実行 */
+async function analyzeFloorPlan() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const files  = document.getElementById('planFile').files;
+  const resultArea = document.getElementById('ai-result-area');
+  const btn = document.getElementById('btn-analyze');
+
+  if (!apiKey) { alert('OpenAI APIキーを入力してください'); return; }
+  if (!files || files.length === 0) { alert('平面図・資料ファイルを選択してください'); return; }
+
+  // APIキーを保存
+  localStorage.setItem('gaisan_tool_apikey', apiKey);
+
+  btn.disabled = true;
+  btn.textContent = 'AI解析中...';
+  resultArea.innerHTML = '<div class="ai-status">GPT-4o Vision で解析しています...</div>';
+
+  try {
+    // 最初の画像ファイルを使用（PDFはbase64変換後に送信）
+    const file = files[0];
+    let imageContent;
+    if (file.type.startsWith('image/')) {
+      const b64 = await fileToBase64(file);
+      imageContent = { type: 'image_url', image_url: { url: `data:${file.type};base64,${b64}`, detail: 'high' } };
+    } else if (file.type === 'application/pdf') {
+      // PDFはbase64で送信（GPT-4oはPDF直接非対応なため注意書き）
+      resultArea.innerHTML = '<div class="ai-error">PDFは直接解析できません。PDFをスクリーンショット（PNG/JPG）に変換してからアップロードしてください。</div>';
+      btn.disabled = false;
+      btn.textContent = 'AI解析実行（平面図から条件を読み取る）';
+      return;
+    } else {
+      resultArea.innerHTML = '<div class="ai-error">対応していないファイル形式です。PNG・JPG・JPEG画像を使用してください。</div>';
+      btn.disabled = false;
+      btn.textContent = 'AI解析実行（平面図から条件を読み取る）';
+      return;
+    }
+
+    const prompt = `この建築平面図から以下の情報を読み取り、JSONのみで回答してください（説明文不要）。
+読み取れない項目はnullを返してください。
+
+{
+  "propName": "物件名（図面タイトルから）",
+  "propAddr": "所在地（読み取れる場合）",
+  "floorTotal": 延床面積の数値（m²）,
+  "buildArea": 建築面積の数値（m²）,
+  "floorVol": 容積対象延床面積の数値（m²）,
+  "floors": 階数の数値,
+  "units": 住戸数の数値,
+  "unitArea": 住戸平均面積の数値（m²/戸）,
+  "siteArea": 敷地面積の数値（m²）,
+  "loftArea": ロフト面積の数値（m²、なければ0）,
+  "perimeter": 建物外周長の推定値（m）,
+  "hasBalc": バルコニーの有無（true/false）,
+  "balcL": バルコニー延長（m、なければ0）,
+  "notes": "その他気づいた点（特記事項・構造・用途等）"
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, imageContent] }],
+        max_tokens: 800
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `API Error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '';
+
+    // JSON部分を抽出
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSONレスポンスを解析できませんでした。');
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // 結果表示
+    window._aiParsed = parsed;
+    const entries = Object.entries(parsed)
+      .filter(([k]) => k !== 'notes')
+      .map(([k, v]) => v !== null ? `<strong>${k}</strong>: ${v}` : null)
+      .filter(Boolean);
+
+    resultArea.innerHTML = `
+      <div class="ai-result-box">
+        <div style="font-weight:bold;margin-bottom:4px;color:#1a3a6b">解析結果</div>
+        ${entries.join('<br>')}
+        ${parsed.notes ? `<div style="margin-top:6px;color:#555"><strong>特記事項:</strong> ${parsed.notes}</div>` : ''}
+        <button class="ai-apply-btn" onclick="applyAIResult()">→ 入力欄に反映する</button>
+      </div>`;
+
+  } catch (e) {
+    resultArea.innerHTML = `<div class="ai-error">エラー: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI解析実行（平面図から条件を読み取る）';
+  }
+}
+
+/** AI解析結果を入力フォームに反映 */
+function applyAIResult() {
+  const p = window._aiParsed;
+  if (!p) return;
+  const setVal = (id, v) => { if (v !== null && v !== undefined && document.getElementById(id)) document.getElementById(id).value = v; };
+  setVal('propName',   p.propName);
+  setVal('propAddr',   p.propAddr);
+  setVal('floorTotal', p.floorTotal);
+  setVal('buildArea',  p.buildArea);
+  setVal('floorVol',   p.floorVol);
+  setVal('floors',     p.floors);
+  setVal('units',      p.units);
+  setVal('unitArea',   p.unitArea);
+  setVal('siteArea',   p.siteArea);
+  setVal('loftArea',   p.loftArea ?? 0);
+  setVal('perimeter',  p.perimeter);
+  if (p.balcL > 0) {
+    const balcYes = document.querySelector('input[name="hasBalc"][value="yes"]');
+    if (balcYes) balcYes.checked = true;
+    setVal('balcL', p.balcL);
+  }
+  updateConditionalBlocks();
+  onInputChange();
+  document.getElementById('ai-result-area').innerHTML += '<div class="ai-status" style="color:#2c7a4b;font-weight:bold">✓ 入力欄に反映しました</div>';
+}
+
+// ============================================================
+// イベント登録
+// ============================================================
+
+function bindEvents() {
+  // AI解析関連（.no-calc は除外して再計算をトリガーしない）
+  const planFileEl = document.getElementById('planFile');
+  if (planFileEl) planFileEl.addEventListener('change', updatePlanPreview);
+  const btnAnalyze = document.getElementById('btn-analyze');
+  if (btnAnalyze) btnAnalyze.addEventListener('click', analyzeFloorPlan);
+
+  // 入力パネル内の計算対象input・select（.no-calc を除外）
+  document.querySelectorAll('#input-panel input:not(.no-calc), #input-panel select:not(.no-calc)')
+    .forEach(el => {
+      el.addEventListener('input',  onInputChange);
+      el.addEventListener('change', onInputChange);
+    });
+
+  // 条件ブロックの表示切替用（ラジオボタン）
+  document.querySelectorAll('input[name="kuiType"], input[name="hasBalc"]')
+    .forEach(el => el.addEventListener('change', updateConditionalBlocks));
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // ボリュームチェックツールからのURLパラメータを受け取る
+  const params = new URLSearchParams(window.location.search);
+  const paramMap = {
+    propName: 'text', propAddr: 'text',
+    siteArea: 'number', buildArea: 'number',
+    floorTotal: 'number', floorVol: 'number',
+    floors: 'number', floorH: 'number',
+    units: 'number', unitArea: 'number',
+  };
+  let hasParams = false;
+  for (const [key, type] of Object.entries(paramMap)) {
+    if (params.has(key)) {
+      const el = document.getElementById(key);
+      if (el) { el.value = params.get(key); hasParams = true; }
+    }
+  }
+  if (hasParams) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#2c7a4b;color:white;padding:8px 20px;font-size:12px;text-align:center';
+    banner.textContent = '✓ ボリュームチェックツールから値を自動入力しました';
+    document.body.insertBefore(banner, document.body.firstChild);
+    setTimeout(() => banner.remove(), 4000);
+  }
+
+  // 初期値セット
+  document.getElementById('docdate').value = new Date().toISOString().split('T')[0];
+  // 保存済みAPIキーをロード
+  const savedKey = localStorage.getItem('gaisan_tool_apikey');
+  if (savedKey && document.getElementById('apiKey')) {
+    document.getElementById('apiKey').value = savedKey;
+  }
+  // 条件ブロック初期表示
+  updateConditionalBlocks();
+  // イベント登録
+  bindEvents();
+  // 初回計算・描画
+  onInputChange();
+});
+</script>
+</body>
+</html>

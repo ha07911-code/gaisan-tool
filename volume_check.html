@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ボリュームチェック＋概算工事費 一括算出ツール</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Yu Gothic", "游ゴシック", Meiryo, sans-serif;
+  font-size: 13px;
+  background: #f0f2f5;
+  color: #1a1a1a;
+}
+
+/* ヘッダー */
+#header {
+  background: #1a3a6b;
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#header h1 { font-size: 15px; font-weight: bold; letter-spacing: 1px; }
+#header .sub { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+
+/* レイアウト */
+#layout {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  min-height: calc(100vh - 48px);
+}
+
+/* 入力パネル */
+#input-panel {
+  background: white;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+  height: calc(100vh - 48px);
+  position: sticky;
+  top: 48px;
+}
+.section {
+  border-bottom: 1px solid #eee;
+  padding: 16px 20px;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #1a3a6b;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #1a3a6b;
+}
+.field { margin-bottom: 10px; }
+.field label {
+  display: block;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 3px;
+  font-weight: bold;
+}
+.field input, .field select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: #1a3a6b;
+}
+.unit { color: #888; font-size: 10px; margin-left: 4px; }
+.hint { font-size: 10px; color: #888; margin-top: 3px; }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.radio-group label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; color: #333; cursor: pointer; }
+.radio-group input[type=radio] { width: auto; margin: 0; }
+
+/* 出力パネル */
+#output-panel {
+  padding: 24px;
+  overflow-y: auto;
+}
+.result-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.result-card h2 {
+  font-size: 13px;
+  font-weight: bold;
+  color: #1a3a6b;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #1a3a6b;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.result-item {
+  background: #f8f9fb;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+}
+.result-item .label { font-size: 10px; color: #666; margin-bottom: 4px; }
+.result-item .value { font-size: 20px; font-weight: bold; color: #1a3a6b; }
+.result-item .unit2 { font-size: 10px; color: #888; margin-left: 2px; }
+.result-item.highlight { background: #e8eef8; }
+.result-item.highlight .value { color: #1a3a6b; font-size: 24px; }
+
+.law-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.law-item {
+  background: #f8f9fb;
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+}
+.law-item .label { font-size: 10px; color: #666; margin-bottom: 3px; }
+.law-item .value { font-size: 14px; font-weight: bold; color: #444; }
+
+.setline-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.setline-table th { background: #f0f2f5; padding: 6px 10px; text-align: left; font-weight: bold; border: 1px solid #ddd; }
+.setline-table td { padding: 6px 10px; border: 1px solid #ddd; }
+.setline-table tr:nth-child(even) td { background: #fafafa; }
+.limit-value { font-weight: bold; color: #c0392b; }
+.ok-value { font-weight: bold; color: #27ae60; }
+
+.btn-gaisan {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: #2c7a4b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 1px;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+.btn-gaisan:hover { background: #245f3c; }
+
+.warn { color: #c0392b; font-size: 11px; margin-top: 4px; }
+.info { color: #2980b9; font-size: 11px; margin-top: 4px; background: #eaf4fd; padding: 6px 10px; border-radius: 4px; }
+
+.section-badge {
+  display: inline-block;
+  background: #1a3a6b;
+  color: white;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>ボリュームチェック ＋ 概算工事費 一括算出ツール</h1>
+    <div class="sub">共同住宅（RC造） ／ 建築基準法に基づく斜線制限・ボリューム自動計算</div>
+  </div>
+</div>
+
+<div id="layout">
+
+<!-- ===== 入力パネル ===== -->
+<div id="input-panel">
+
+  <!-- 物件情報 -->
+  <div class="section">
+    <div class="section-title">物件情報</div>
+    <div class="field"><label>物件名</label><input type="text" id="propName" value="〇〇マンション"></div>
+    <div class="field"><label>所在地</label><input type="text" id="propAddr" value="東京都〇〇区"></div>
+  </div>
+
+  <!-- 法令情報 -->
+  <div class="section">
+    <div class="section-title">法令情報 <span class="section-badge">用途地域で自動入力</span></div>
+    <div class="field">
+      <label>用途地域</label>
+      <select id="youtoChiki" onchange="onYoutoChange()">
+        <option value="">選択してください</option>
+        <optgroup label="住居系">
+          <option value="1teiju">第一種低層住居専用地域</option>
+          <option value="2teiju">第二種低層住居専用地域</option>
+          <option value="1chuko">第一種中高層住居専用地域</option>
+          <option value="2chuko">第二種中高層住居専用地域</option>
+          <option value="1jukyo" selected>第一種住居地域</option>
+          <option value="2jukyo">第二種住居地域</option>
+          <option value="junkyo">準住居地域</option>
+        </optgroup>
+        <optgroup label="商業・工業系">
+          <option value="kinrin">近隣商業地域</option>
+          <option value="shogyo">商業地域</option>
+          <option value="junkogyo">準工業地域</option>
+          <option value="kogyo">工業地域</option>
+          <option value="kogyo_sen">工業専用地域</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>容積率<span class="unit">%</span></label><input type="number" id="yoseki" value="200" step="10" min="50"></div>
+      <div class="field"><label>建ぺい率<span class="unit">%</span></label><input type="number" id="kenpei" value="60" step="5" min="30"></div>
+    </div>
+    <div class="field">
+      <label>防火指定</label>
+      <div class="radio-group">
+        <label><input type="radio" name="boka" value="fire"> 防火地域</label>
+        <label><input type="radio" name="boka" value="quasi" checked> 準防火地域</label>
+        <label><input type="radio" name="boka" value="none"> 指定なし</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>日影規制</label>
+      <div class="radio-group">
+        <label><input type="radio" name="nissho" value="yes"> あり</label>
+        <label><input type="radio" name="nissho" value="no" checked> なし</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 敷地情報 -->
+  <div class="section">
+    <div class="section-title">敷地情報</div>
+    <div class="field"><label>敷地面積<span class="unit">㎡</span></label><input type="number" id="siteArea" value="300" min="50" oninput="calc()"></div>
+    <div class="field-row">
+      <div class="field"><label>間口<span class="unit">m</span></label><input type="number" id="frontage" value="15" step="0.5" min="3" oninput="calc()"></div>
+      <div class="field"><label>奥行<span class="unit">m</span></label><input type="number" id="depth" value="20" step="0.5" min="3" oninput="calc()"></div>
+    </div>
+    <div class="field">
+      <label>地形</label>
+      <div class="radio-group">
+        <label><input type="radio" name="shape" value="rect" checked onchange="calc()"> 整形地</label>
+        <label><input type="radio" name="shape" value="irreg" onchange="calc()"> 不整形地</label>
+      </div>
+    </div>
+    <div class="field" id="shapePctField" style="display:none">
+      <label>有効面積率<span class="unit">%</span></label>
+      <input type="number" id="shapePct" value="85" min="50" max="100" oninput="calc()">
+      <div class="hint">不整形による有効面積の割合</div>
+    </div>
+  </div>
+
+  <!-- 道路条件 -->
+  <div class="section">
+    <div class="section-title">道路条件</div>
+    <div class="field">
+      <label>前面道路幅員<span class="unit">m</span></label>
+      <input type="number" id="roadW" value="6" step="0.5" min="2" oninput="calc()">
+    </div>
+    <div class="field">
+      <label>道路方位</label>
+      <div class="radio-group">
+        <label><input type="radio" name="roadDir" value="S" checked onchange="calc()"> 南</label>
+        <label><input type="radio" name="roadDir" value="N" onchange="calc()"> 北</label>
+        <label><input type="radio" name="roadDir" value="E" onchange="calc()"> 東</label>
+        <label><input type="radio" name="roadDir" value="W" onchange="calc()"> 西</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>角地</label>
+      <div class="radio-group">
+        <label><input type="radio" name="kakuchi" value="no" checked onchange="calc()"> なし</label>
+        <label><input type="radio" name="kakuchi" value="yes" onchange="calc()"> あり（建ぺい率+10%）</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>隣地との距離<span class="unit">m（平均）</span></label>
+      <input type="number" id="rintiD" value="0" step="0.5" min="0" oninput="calc()">
+      <div class="hint">0の場合は敷地境界線まで</div>
+    </div>
+  </div>
+
+  <!-- 計画条件 -->
+  <div class="section">
+    <div class="section-title">計画条件</div>
+    <div class="field-row">
+      <div class="field"><label>階高<span class="unit">m</span></label><input type="number" id="floorH" value="3.0" step="0.1" min="2.5" oninput="calc()"></div>
+      <div class="field"><label>最高軒高<span class="unit">m（目安）</span></label><input type="number" id="maxH" value="" placeholder="自動計算" readonly style="background:#f8f9fb"></div>
+    </div>
+    <div class="field">
+      <label>地下階</label>
+      <div class="radio-group">
+        <label><input type="radio" name="chika" value="no" checked onchange="calc()"> なし</label>
+        <label><input type="radio" name="chika" value="yes" onchange="calc()"> あり（容積率不算入）</label>
+      </div>
+    </div>
+    <div class="field" id="chikaField" style="display:none">
+      <label>地下延床面積<span class="unit">㎡</span></label>
+      <input type="number" id="chikaArea" value="100" min="0" oninput="calc()">
+    </div>
+    <div class="field">
+      <label>住戸平均面積<span class="unit">㎡/戸</span></label>
+      <input type="number" id="unitArea" value="30" min="15" oninput="calc()">
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== 出力パネル ===== -->
+<div id="output-panel">
+
+  <!-- 法令チェック結果 -->
+  <div class="result-card">
+    <h2>📋 法令チェック結果</h2>
+    <div class="law-grid">
+      <div class="law-item"><div class="label">容積率</div><div class="value" id="r_yoseki">—</div></div>
+      <div class="law-item"><div class="label">建ぺい率（有効）</div><div class="value" id="r_kenpei">—</div></div>
+      <div class="law-item"><div class="label">道路斜線勾配</div><div class="value" id="r_doshaSlope">—</div></div>
+      <div class="law-item"><div class="label">北側斜線</div><div class="value" id="r_kitaLine">—</div></div>
+    </div>
+  </div>
+
+  <!-- 斜線制限 -->
+  <div class="result-card">
+    <h2>📐 斜線制限による高さ制限</h2>
+    <table class="setline-table">
+      <thead>
+        <tr>
+          <th>制限種別</th>
+          <th>計算式</th>
+          <th>制限高さ</th>
+          <th>適用</th>
+        </tr>
+      </thead>
+      <tbody id="setlineTable">
+        <tr><td colspan="4" style="text-align:center;color:#888;padding:16px">入力値を確認してください</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ボリュームチェック結果 -->
+  <div class="result-card">
+    <h2>🏢 ボリュームチェック結果</h2>
+    <div class="result-grid">
+      <div class="result-item highlight">
+        <div class="label">最大延床面積</div>
+        <div class="value" id="r_maxFloor">—</div>
+        <span class="unit2">㎡</span>
+      </div>
+      <div class="result-item highlight">
+        <div class="label">想定階数</div>
+        <div class="value" id="r_floors">—</div>
+        <span class="unit2">階</span>
+      </div>
+      <div class="result-item highlight">
+        <div class="label">想定戸数</div>
+        <div class="value" id="r_units">—</div>
+        <span class="unit2">戸</span>
+      </div>
+      <div class="result-item">
+        <div class="label">建築面積</div>
+        <div class="value" id="r_buildArea">—</div>
+        <span class="unit2">㎡</span>
+      </div>
+      <div class="result-item">
+        <div class="label">有効敷地面積</div>
+        <div class="value" id="r_effSite">—</div>
+        <span class="unit2">㎡</span>
+      </div>
+      <div class="result-item">
+        <div class="label">建ぺい率（計画）</div>
+        <div class="value" id="r_kenpeiPlan">—</div>
+        <span class="unit2">%</span>
+      </div>
+    </div>
+    <div id="volumeNote" class="info" style="display:none"></div>
+  </div>
+
+  <!-- 概略図 -->
+  <div class="result-card">
+    <h2>📊 概略図</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <!-- 断面図 -->
+      <div>
+        <div style="font-size:11px;color:#666;margin-bottom:6px;font-weight:bold">■ 断面図（道路斜線・建物高さ）</div>
+        <svg id="sectionSVG" width="100%" viewBox="0 0 320 220" style="border:1px solid #ddd;border-radius:4px;background:#f8f9fb"></svg>
+      </div>
+      <!-- 平面図 -->
+      <div>
+        <div style="font-size:11px;color:#666;margin-bottom:4px;font-weight:bold;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px">
+          <span>■ 平面図（敷地・建物フットプリント）</span>
+          <span style="display:flex;gap:3px;align-items:center">
+            <span style="font-size:10px;font-weight:normal;color:#555">前面道路：</span>
+            <button id="dirBtn_N" onclick="setPlanDir('N')" style="padding:1px 6px;font-size:10px;border:1px solid #aaa;border-radius:3px;cursor:pointer;background:#e2e8f0;color:#333">北</button>
+            <button id="dirBtn_S" onclick="setPlanDir('S')" style="padding:1px 6px;font-size:10px;border:1px solid #aaa;border-radius:3px;cursor:pointer;background:#2563eb;color:white">南</button>
+            <button id="dirBtn_E" onclick="setPlanDir('E')" style="padding:1px 6px;font-size:10px;border:1px solid #aaa;border-radius:3px;cursor:pointer;background:#e2e8f0;color:#333">東</button>
+            <button id="dirBtn_W" onclick="setPlanDir('W')" style="padding:1px 6px;font-size:10px;border:1px solid #aaa;border-radius:3px;cursor:pointer;background:#e2e8f0;color:#333">西</button>
+          </span>
+        </div>
+        <svg id="planSVG" width="100%" viewBox="0 0 320 220" style="border:1px solid #ddd;border-radius:4px;background:#f8f9fb"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 概算工事費ツールへ -->
+  <div class="result-card">
+    <h2>💴 概算工事費ツールへ連携</h2>
+    <p style="font-size:12px;color:#555;margin-bottom:12px">ボリュームチェック結果を概算工事費ツールに自動入力して開きます。</p>
+    <button class="btn-gaisan" onclick="openGaisan()">概算工事費ツールを開く →</button>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ===== 用途地域マスター =====
+const YOUTO = {
+  '1teiju':   { yoseki: 60,  kenpei: 40, doshaSlope: 1.25, kitaLine: true,  rintiLine: false, name: '一低専' },
+  '2teiju':   { yoseki: 80,  kenpei: 40, doshaSlope: 1.25, kitaLine: true,  rintiLine: false, name: '二低専' },
+  '1chuko':   { yoseki: 200, kenpei: 60, doshaSlope: 1.25, kitaLine: true,  rintiLine: true,  name: '一中高' },
+  '2chuko':   { yoseki: 200, kenpei: 60, doshaSlope: 1.25, kitaLine: true,  rintiLine: true,  name: '二中高' },
+  '1jukyo':   { yoseki: 200, kenpei: 60, doshaSlope: 1.25, kitaLine: false, rintiLine: true,  name: '一住居' },
+  '2jukyo':   { yoseki: 200, kenpei: 60, doshaSlope: 1.25, kitaLine: false, rintiLine: true,  name: '二住居' },
+  'junkyo':   { yoseki: 200, kenpei: 60, doshaSlope: 1.25, kitaLine: false, rintiLine: true,  name: '準住居' },
+  'kinrin':   { yoseki: 300, kenpei: 80, doshaSlope: 1.5,  kitaLine: false, rintiLine: true,  name: '近商' },
+  'shogyo':   { yoseki: 400, kenpei: 80, doshaSlope: 1.5,  kitaLine: false, rintiLine: true,  name: '商業' },
+  'junkogyo': { yoseki: 200, kenpei: 60, doshaSlope: 1.5,  kitaLine: false, rintiLine: true,  name: '準工' },
+  'kogyo':    { yoseki: 200, kenpei: 60, doshaSlope: 1.5,  kitaLine: false, rintiLine: false, name: '工業' },
+  'kogyo_sen':{ yoseki: 200, kenpei: 60, doshaSlope: 1.5,  kitaLine: false, rintiLine: false, name: '工専' },
+};
+
+// 隣地斜線 立ち上がり（住居系:20m, 商業系:31m）
+function rintiStand(key) {
+  return ['kinrin','shogyo','junkogyo','kogyo','kogyo_sen'].includes(key) ? 31 : 20;
+}
+
+function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function r(name) { return document.querySelector(`input[name=${name}]:checked`)?.value; }
+
+function onYoutoChange() {
+  const key = document.getElementById('youtoChiki').value;
+  if (!key || !YOUTO[key]) return;
+  const y = YOUTO[key];
+  document.getElementById('yoseki').value = y.yoseki;
+  document.getElementById('kenpei').value = y.kenpei;
+  calc();
+}
+
+document.querySelectorAll('input[type=number]:not([readonly])').forEach(el => el.addEventListener('input', calc));
+document.querySelectorAll('input[type=radio]').forEach(el => el.addEventListener('change', calc));
+
+document.querySelector('input[name=shape][value=irreg]').addEventListener('change', () => {
+  document.getElementById('shapePctField').style.display = 'block';
+});
+document.querySelector('input[name=shape][value=rect]').addEventListener('change', () => {
+  document.getElementById('shapePctField').style.display = 'none';
+  calc();
+});
+document.querySelector('input[name=chika][value=yes]').addEventListener('change', () => {
+  document.getElementById('chikaField').style.display = 'block';
+});
+document.querySelector('input[name=chika][value=no]').addEventListener('change', () => {
+  document.getElementById('chikaField').style.display = 'none';
+  calc();
+});
+
+function calc() {
+  const key = document.getElementById('youtoChiki').value;
+  const youto = YOUTO[key] || {};
+
+  const siteArea   = v('siteArea');
+  const yoseki     = v('yoseki') / 100;
+  let   kenpei     = v('kenpei') / 100;
+  const roadW      = v('roadW');
+  const roadDir    = r('roadDir') || 'S';
+  const floorH     = v('floorH') || 3.0;
+  const unitArea   = v('unitArea') || 30;
+  const rintiD     = v('rintiD');
+  const kakuchi    = r('kakuchi') === 'yes';
+  const shapeIsRect = r('shape') === 'rect';
+  const shapePct   = shapeIsRect ? 100 : (v('shapePct') || 85);
+  const chika      = r('chika') === 'yes';
+  const chikaArea  = chika ? v('chikaArea') : 0;
+
+  if (!siteArea || !yoseki) return;
+
+  // 有効敷地面積
+  const effSite = siteArea * (shapePct / 100);
+
+  // 建ぺい率（角地+10%）
+  if (kakuchi) kenpei = Math.min(kenpei + 0.10, 1.0);
+  const buildArea = Math.floor(effSite * kenpei);
+
+  // 道路斜線による高さ制限
+  const doshaSlope = youto.doshaSlope || 1.25;
+  const doshaLimit = roadW * doshaSlope;
+
+  // 北側斜線（住居系のみ）
+  let kitaLimit = Infinity;
+  const hasKita = youto.kitaLine;
+  if (hasKita && roadDir !== 'N') {
+    // 真北から5m立ち上がり + 1.25勾配（簡易計算）
+    kitaLimit = 5 + (10 * 1.25); // 奥行10m想定の簡易値
+  }
+
+  // 隣地斜線
+  let rintiLimit = Infinity;
+  if (youto.rintiLine) {
+    const stand = rintiStand(key);
+    const dist = rintiD || 0;
+    rintiLimit = stand + dist * 1.25;
+  }
+
+  // 最終高さ制限（最小値）
+  const maxHeight = Math.min(doshaLimit, kitaLimit, rintiLimit);
+  const floors = Math.max(1, Math.floor((maxHeight - 1.0) / floorH)); // 1m屋上パラペット想定
+
+  // 道路幅員による容積率制限（前面道路幅員×0.4 or 0.6）
+  const roadYosekiRate = roadW * (youto.doshaSlope <= 1.25 ? 0.4 : 0.6);
+  const effectiveYoseki = Math.min(yoseki, roadYosekiRate);
+
+  // 最大延床面積（容積率による上限）
+  let maxFloor = Math.floor(effSite * effectiveYoseki) + chikaArea;
+
+  // 階ごとの床面積（建築面積×階数が延床の上限）
+  const floorByBuild = buildArea * floors;
+  maxFloor = Math.min(maxFloor, floorByBuild);
+
+  // 想定戸数
+  const units = Math.floor(maxFloor / unitArea);
+
+  // 表示
+  document.getElementById('maxH').value = maxHeight.toFixed(1);
+  document.getElementById('r_maxFloor').textContent = Math.round(maxFloor).toLocaleString();
+  document.getElementById('r_floors').textContent = floors;
+  document.getElementById('r_units').textContent = units;
+  document.getElementById('r_buildArea').textContent = Math.round(buildArea).toLocaleString();
+  document.getElementById('r_effSite').textContent = Math.round(effSite).toLocaleString();
+  document.getElementById('r_kenpeiPlan').textContent = (kenpei * 100).toFixed(0);
+  document.getElementById('r_yoseki').textContent = (v('yoseki')) + '%';
+  document.getElementById('r_kenpei').textContent = (kenpei * 100).toFixed(0) + '%';
+  document.getElementById('r_doshaSlope').textContent = doshaSlope;
+  document.getElementById('r_kitaLine').textContent = hasKita ? 'あり' : 'なし';
+
+  // 道路容積率の注記
+  const note = document.getElementById('volumeNote');
+  if (roadYosekiRate < yoseki) {
+    note.style.display = 'block';
+    note.textContent = `※ 前面道路幅員による容積率制限が適用されます（${(roadYosekiRate * 100).toFixed(0)}%）。指定容積率 ${v('yoseki')}% より厳しい制限です。`;
+  } else {
+    note.style.display = 'none';
+  }
+
+  // 斜線制限テーブル
+  const rows = [];
+  rows.push(`<tr>
+    <td>道路斜線</td>
+    <td>道路幅員 ${roadW}m × ${doshaSlope}</td>
+    <td class="limit-value">${doshaLimit.toFixed(1)} m</td>
+    <td class="${doshaLimit <= maxHeight ? 'limit-value' : 'ok-value'}">${doshaLimit <= maxHeight ? '▼ 最厳' : '—'}</td>
+  </tr>`);
+
+  if (hasKita) {
+    rows.push(`<tr>
+      <td>北側斜線</td>
+      <td>5m + 奥行 × 1.25（住居系）</td>
+      <td class="limit-value">${kitaLimit === Infinity ? '—' : kitaLimit.toFixed(1) + ' m'}</td>
+      <td>参考値</td>
+    </tr>`);
+  }
+
+  if (youto.rintiLine) {
+    rows.push(`<tr>
+      <td>隣地斜線</td>
+      <td>${rintiStand(key)}m + 隣地距離 ${rintiD}m × 1.25</td>
+      <td class="limit-value">${rintiLimit === Infinity ? '—' : rintiLimit.toFixed(1) + ' m'}</td>
+      <td class="${rintiLimit <= maxHeight ? 'limit-value' : 'ok-value'}">${rintiLimit <= maxHeight ? '▼ 最厳' : '—'}</td>
+    </tr>`);
+  }
+
+  document.getElementById('setlineTable').innerHTML = rows.join('');
+
+  // 結果を保存
+  window._vcResult = { maxFloor, floors, buildArea, units, siteArea: effSite, floorH, unitArea };
+
+  // 概略図を更新
+  drawDiagrams();
+}
+
+// ===== SVG概略図描画 =====
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+function svgText(svg, x, y, text, opts = {}) {
+  const el = svgEl('text', {
+    x, y,
+    'font-size': opts.size || 9,
+    'fill': opts.color || '#333',
+    'text-anchor': opts.anchor || 'middle',
+    'font-family': 'Yu Gothic, Meiryo, sans-serif',
+    'font-weight': opts.bold ? 'bold' : 'normal',
+  });
+  el.textContent = text;
+  svg.appendChild(el);
+}
+
+function drawSection(result) {
+  const svg = document.getElementById('sectionSVG');
+  svg.innerHTML = '';
+  if (!result) return;
+
+  const { floors, floorH } = result;
+  const roadW      = v('roadW') || 6;
+  const depth      = v('depth') || 20;
+  const doshaSlope = parseFloat(document.getElementById('r_doshaSlope').textContent) || 1.25;
+  const bldHeight  = floors * floorH;
+
+  // ── スケール設定（X・Y等スケール → 斜線角度が正確に表現される）──
+  // 道路斜線は「水平1に対し斜線勾配（1.25 or 1.5）」の角度なので
+  // X方向とY方向が同じ px/m でなければ視覚的な角度が狂う
+  const totalRealW = roadW + depth;
+  const hAtFront   = roadW * doshaSlope;           // 敷地前面での斜線高さ
+  const hAtBack    = (roadW + depth) * doshaSlope; // 敷地後端での斜線高さ
+  // 表示上限高さ：建物高さと斜線前面高の大きい方に 30% 余白
+  const maxRealH   = Math.max(bldHeight, hAtFront) * 1.35;
+
+  // SVG 高さを 260 に拡大して縦方向余裕を確保
+  const SVG_W = 320, SVG_H = 260;
+  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
+
+  const PAD_L = 22, PAD_R = 60, PAD_T = 30, PAD_B = 32;
+  const drawW = SVG_W - PAD_L - PAD_R;
+  const drawH = SVG_H - PAD_T - PAD_B;
+
+  // 等スケール（X・Y 同じ px/m）：斜線の視覚的角度が 1:doshaSlope に正確一致
+  const scale   = Math.min(drawW / totalRealW, drawH / maxRealH);
+  const originX = PAD_L;
+
+  const groundY    = SVG_H - PAD_B;       // 地面 Y は常に下端固定
+  const siteStartX = originX + roadW * scale;
+  const siteEndX   = siteStartX + depth  * scale;
+
+  const toSVGY = (realH) => groundY - realH * scale;
+  const toSVGX = (realX) => originX + realX * scale;
+
+  // ── 背景 ────────────────────────────────────────────────────
+  svg.appendChild(svgEl('rect', { x: 0, y: 0, width: SVG_W, height: SVG_H, fill: '#f0f4f8' }));
+
+  // ── 道路（グレー塗り）───────────────────────────────────────
+  svg.appendChild(svgEl('rect', {
+    x: originX, y: PAD_T,
+    width: roadW * scale, height: groundY - PAD_T,
+    fill: '#dde0e6', stroke: 'none'
+  }));
+  // 道路幅ラベルは三角形のベースラベルに統合するため、ここでは省略
+
+  // 道路センターライン
+  const roadCX = originX + roadW * scale / 2;
+  svg.appendChild(svgEl('line', { x1: roadCX, y1: PAD_T, x2: roadCX, y2: groundY,
+    stroke: '#fff', 'stroke-width': 1, 'stroke-dasharray': '6,4' }));
+
+  // ── 道路反対側境界線（斜線起点）─────────────────────────────
+  svg.appendChild(svgEl('line', { x1: originX, y1: PAD_T, x2: originX, y2: groundY,
+    stroke: '#888', 'stroke-width': 1.5, 'stroke-dasharray': '4,3' }));
+  // 2行に分けて上部に表示（敷地前面ラベルと重ならないよう高位置）
+  svgText(svg, originX + 2, PAD_T - 18, '道路反対側', { size: 7, color: '#888', anchor: 'start' });
+  svgText(svg, originX + 2, PAD_T - 9,  '境界', { size: 7, color: '#888', anchor: 'start' });
+
+  // ── 敷地前面境界（赤竪線）──────────────────────────────────
+  svg.appendChild(svgEl('line', { x1: siteStartX, y1: PAD_T, x2: siteStartX, y2: groundY,
+    stroke: '#c0392b', 'stroke-width': 1.5 }));
+  // 道路反対側境界ラベルより下の位置（重ならないよう）
+  svgText(svg, siteStartX, PAD_T - 6, '敷地前面', { size: 7, color: '#c0392b', anchor: 'start' });
+
+  // ── 地面線 ──────────────────────────────────────────────────
+  svg.appendChild(svgEl('line', { x1: 0, y1: groundY, x2: SVG_W, y2: groundY,
+    stroke: '#555', 'stroke-width': 2 }));
+
+  // ── 道路斜線（等スケールにより視覚角度 = doshaSlope 比）──────
+  // 斜線終点：maxRealH に達する X 座標（または図の右端）
+  const shEndRealX = Math.min(maxRealH / doshaSlope, totalRealW);
+  const shEndX = toSVGX(shEndRealX);
+  const shEndY = Math.max(toSVGY(shEndRealX * doshaSlope), PAD_T);
+
+  // 斜線制限超過ゾーン（斜線より上 = 建築不可エリア）を薄い赤で塗る
+  svg.appendChild(svgEl('polygon', {
+    points: `${originX},${PAD_T} ${shEndX},${PAD_T} ${shEndX},${shEndY} ${originX},${groundY}`,
+    fill: '#f8c8c8', opacity: '0.5', stroke: 'none'
+  }));
+
+  // 道路斜線
+  svg.appendChild(svgEl('line', {
+    x1: originX, y1: groundY,
+    x2: shEndX, y2: shEndY,
+    stroke: '#e74c3c', 'stroke-width': 2.5, 'stroke-dasharray': '6,3'
+  }));
+
+  // 斜線ラベル（斜線の中間付近）
+  const midRealX = shEndRealX * 0.52;
+  svgText(svg, toSVGX(midRealX) - 5, toSVGY(midRealX * doshaSlope) - 6,
+    `道路斜線 1:${doshaSlope}`, { size: 8, color: '#c0392b', anchor: 'end' });
+
+  // ── 勾配参照三角形（道路幅を底辺として doshaSlope 倍の高さを大きく図示）──
+  // 底辺 = 道路幅、高さ = 道路幅 × doshaSlope → 視覚的に 1.25 と 1.5 の差が明確
+  const triBaseX = originX;
+  const triBaseY = groundY;
+  const triW_ref = roadW * scale;          // 底辺ピクセル数 = 道路幅 × scale
+  const triH_ref = hAtFront * scale;       // 高さピクセル数 = 道路幅 × doshaSlope × scale
+  svg.appendChild(svgEl('polygon', {
+    points: `${triBaseX},${triBaseY} ${triBaseX + triW_ref},${triBaseY} ${triBaseX + triW_ref},${triBaseY - triH_ref}`,
+    fill: '#fde8e8', stroke: '#e74c3c', 'stroke-width': 1.2
+  }));
+  // 直角マーク
+  svg.appendChild(svgEl('polyline', {
+    points: `${triBaseX + triW_ref - 5},${triBaseY} ${triBaseX + triW_ref - 5},${triBaseY - 5} ${triBaseX + triW_ref},${triBaseY - 5}`,
+    fill: 'none', stroke: '#e74c3c', 'stroke-width': 1
+  }));
+  // 底辺ラベル（道路幅）
+  svgText(svg, triBaseX + triW_ref / 2, triBaseY + 12, `道路 ${roadW}m`, { size: 7, color: '#c0392b' });
+  // 垂直辺ラベル（× doshaSlope = hAtFront m）
+  svgText(svg, triBaseX + triW_ref + 3, triBaseY - triH_ref / 2 - 3,
+    `×${doshaSlope}`, { size: 9, color: '#c0392b', anchor: 'start', bold: true });
+  svgText(svg, triBaseX + triW_ref + 3, triBaseY - triH_ref / 2 + 9,
+    `=${hAtFront.toFixed(1)}m`, { size: 7, color: '#c0392b', anchor: 'start' });
+
+  // ── 建物断面（斜線制限内に収まる形）────────────────────────
+  const bldFrontH = Math.min(bldHeight, hAtFront);
+  const bldBackH  = Math.min(bldHeight, hAtBack);
+
+  if (bldHeight <= hAtFront) {
+    // 斜線に引っかからない → 矩形
+    svg.appendChild(svgEl('rect', {
+      x: siteStartX, y: toSVGY(bldFrontH),
+      width: siteEndX - siteStartX, height: groundY - toSVGY(bldFrontH),
+      fill: '#c8d8f0', stroke: '#1a3a6b', 'stroke-width': 1.5
+    }));
+  } else {
+    // 斜線でカットされた台形（前面低・後面高）
+    const pts = [
+      `${siteStartX},${toSVGY(bldFrontH)}`,
+      `${siteEndX},${toSVGY(bldBackH)}`,
+      `${siteEndX},${groundY}`,
+      `${siteStartX},${groundY}`,
+    ].join(' ');
+    svg.appendChild(svgEl('polygon', { points: pts, fill: '#c8d8f0', stroke: '#1a3a6b', 'stroke-width': 1.5 }));
+  }
+
+  // 階数ライン
+  for (let i = 1; i <= floors; i++) {
+    const realH = i * floorH;
+    if (realH > bldBackH + 0.1) break;
+    const ly = toSVGY(realH);
+    const shX_real = realH / doshaSlope;
+    const lineStartX = Math.max(siteStartX, toSVGX(shX_real));
+    svg.appendChild(svgEl('line', {
+      x1: lineStartX, y1: ly, x2: siteEndX, y2: ly,
+      stroke: '#1a3a6b', 'stroke-width': 0.5, 'stroke-dasharray': '3,2'
+    }));
+    if (i < floors) svgText(svg, siteStartX - 3, ly + 4, `${i}F`, { size: 7, color: '#1a3a6b', anchor: 'end' });
+  }
+  svgText(svg, siteStartX - 3, toSVGY(bldFrontH) + 4, `${floors}F`, { size: 7, color: '#1a3a6b', anchor: 'end' });
+
+  // ── 高さ寸法矢印 ────────────────────────────────────────────
+  const arrX = siteEndX + 10;
+  svg.appendChild(svgEl('line', { x1: arrX, y1: groundY, x2: arrX, y2: toSVGY(bldBackH),
+    stroke: '#555', 'stroke-width': 1 }));
+  svg.appendChild(svgEl('line', { x1: arrX - 4, y1: groundY - 4, x2: arrX, y2: groundY,
+    stroke: '#555', 'stroke-width': 1 }));
+  svg.appendChild(svgEl('line', { x1: arrX - 4, y1: toSVGY(bldBackH) + 4, x2: arrX, y2: toSVGY(bldBackH),
+    stroke: '#555', 'stroke-width': 1 }));
+  svgText(svg, arrX + 3, (groundY + toSVGY(bldBackH)) / 2,
+    `H=${bldHeight.toFixed(1)}m`, { size: 8, color: '#444', anchor: 'start' });
+
+  // ── 凡例 ──────────────────────────────────────────────────
+  svg.appendChild(svgEl('line', { x1: PAD_L, y1: SVG_H - 7, x2: PAD_L + 18, y2: SVG_H - 7,
+    stroke: '#e74c3c', 'stroke-width': 2, 'stroke-dasharray': '6,3' }));
+  svgText(svg, PAD_L + 20, SVG_H - 4, `道路斜線 ×${doshaSlope}（${doshaSlope >= 1.5 ? '商業系' : '住居系'}）`,
+    { size: 7, color: '#e74c3c', anchor: 'start' });
+}
+
+function drawPlan(result) {
+  const svg = document.getElementById('planSVG');
+  svg.innerHTML = '';
+  if (!result) return;
+
+  const { buildArea, siteArea } = result;
+  const frontage  = v('frontage') || 15;
+  const depth     = v('depth') || 20;
+  const roadW     = v('roadW') || 6;
+  const kenpeiPct = parseFloat(document.getElementById('r_kenpeiPlan').textContent) || 60;
+  const dir       = window._planDir || 'S'; // N/S/E/W
+
+  const SVG_W = 320, SVG_H = 220;
+  const PAD = 26;
+  const roadThick = 22;
+
+  // 方角に応じて敷地の描画向きを決める
+  // N/S → 水平=間口, 垂直=奥行  /  E/W → 水平=奥行, 垂直=間口
+  const isNS = (dir === 'N' || dir === 'S');
+  const siteW_real = isNS ? frontage : depth;
+  const siteD_real = isNS ? depth    : frontage;
+
+  const drawW = isNS ? SVG_W - PAD * 2             : SVG_W - PAD * 2 - roadThick;
+  const drawH = isNS ? SVG_H - PAD * 2 - roadThick : SVG_H - PAD * 2;
+  const scale  = Math.min(drawW / siteW_real, drawH / siteD_real);
+
+  const siteW_px = siteW_real * scale;
+  const siteD_px = siteD_real * scale;
+
+  // 敷地左上座標（方角に応じて道路分オフセット）
+  let sx, sy;
+  if      (dir === 'S') { sx = (SVG_W - siteW_px) / 2;                sy = PAD; }
+  else if (dir === 'N') { sx = (SVG_W - siteW_px) / 2;                sy = PAD + roadThick; }
+  else if (dir === 'E') { sx = (SVG_W - siteW_px - roadThick) / 2;    sy = (SVG_H - siteD_px) / 2; }
+  else                  { sx = (SVG_W - siteW_px - roadThick) / 2 + roadThick; sy = (SVG_H - siteD_px) / 2; }
+
+  // 道路矩形の位置
+  let rX, rY, rW, rH, rLX, rLY, rLRot;
+  if (dir === 'S') {
+    rX = sx - 10;     rY = sy + siteD_px; rW = siteW_px + 20; rH = roadThick;
+    rLX = SVG_W / 2;  rLY = rY + roadThick / 2 + 4;  rLRot = 0;
+  } else if (dir === 'N') {
+    rX = sx - 10;     rY = PAD;           rW = siteW_px + 20; rH = roadThick;
+    rLX = SVG_W / 2;  rLY = PAD + roadThick / 2 + 4; rLRot = 0;
+  } else if (dir === 'E') {
+    rX = sx + siteW_px; rY = sy - 10;    rW = roadThick; rH = siteD_px + 20;
+    rLX = rX + roadThick / 2; rLY = SVG_H / 2; rLRot = 90;
+  } else { // W
+    rX = sx - roadThick; rY = sy - 10;   rW = roadThick; rH = siteD_px + 20;
+    rLX = rX + roadThick / 2; rLY = SVG_H / 2; rLRot = -90;
+  }
+
+  // 建物フットプリント（間口方向・奥行方向は入力値に従う）
+  const bldRealD = Math.min(buildArea / frontage, depth - 1);
+  const bldRealF = Math.min(buildArea / bldRealD, frontage - 1);
+  const bldW_px  = (isNS ? bldRealF : bldRealD) * scale;
+  const bldD_px  = (isNS ? bldRealD : bldRealF) * scale;
+  const bldX = sx + (siteW_px - bldW_px) / 2;
+  const bldY = sy + (siteD_px - bldD_px) / 2;
+  const marginFront_px = (siteD_px - bldD_px) / 2; // 前後方向のセットバック
+
+  // ── 描画 ───────────────────────────────────────────────────
+  svg.appendChild(svgEl('rect', { x: 0, y: 0, width: SVG_W, height: SVG_H, fill: '#f0f4f8' }));
+
+  // 道路
+  svg.appendChild(svgEl('rect', { x: rX, y: rY, width: rW, height: rH, fill: '#dde0e6', stroke: '#bbb', 'stroke-width': 0.5 }));
+  if (rLRot === 0) {
+    svgText(svg, rLX, rLY, `前面道路（${roadW}m）`, { size: 8, color: '#666' });
+  } else {
+    const tEl = svgEl('text', {
+      x: rLX, y: rLY, 'font-size': 8, fill: '#666', 'text-anchor': 'middle',
+      'font-family': 'Yu Gothic, Meiryo, sans-serif',
+      transform: `rotate(${rLRot},${rLX},${rLY})`
+    });
+    tEl.textContent = `前面道路（${roadW}m）`;
+    svg.appendChild(tEl);
+  }
+
+  // 敷地
+  svg.appendChild(svgEl('rect', { x: sx, y: sy, width: siteW_px, height: siteD_px, fill: '#e8edf5', stroke: '#888', 'stroke-width': 1.5 }));
+
+  // 建物フットプリント
+  svg.appendChild(svgEl('rect', { x: bldX, y: bldY, width: bldW_px, height: bldD_px, fill: '#c8d8f0', stroke: '#1a3a6b', 'stroke-width': 1.5 }));
+
+  // ハッチング
+  for (let hx = bldX + 8; hx < bldX + bldW_px; hx += 10) {
+    svg.appendChild(svgEl('line', {
+      x1: hx, y1: bldY, x2: hx - 8, y2: Math.min(bldY + 8, bldY + bldD_px),
+      stroke: '#9ab0d0', 'stroke-width': 0.5
+    }));
+  }
+
+  // 建物ラベル
+  svgText(svg, bldX + bldW_px / 2, bldY + bldD_px / 2 - 5, `建築面積`, { size: 9, color: '#1a3a6b', bold: true });
+  svgText(svg, bldX + bldW_px / 2, bldY + bldD_px / 2 + 7, `${Math.round(buildArea)}㎡`, { size: 10, color: '#1a3a6b', bold: true });
+  svgText(svg, bldX + bldW_px / 2, bldY + bldD_px / 2 + 18, `(建ぺい率 ${kenpeiPct}%)`, { size: 8, color: '#4a7ab0' });
+
+  // 敷地寸法ラベル（方角に応じて道路と重ならない位置に配置）
+  const hLabel = isNS ? `間口 ${frontage}m` : `奥行 ${depth}m`;
+  const vLabel = isNS ? `奥行 ${depth}m`    : `間口 ${frontage}m`;
+
+  // 上辺ラベル（道路が上にある場合は道路の外側へ）
+  const topLabelY = (dir === 'N') ? PAD - 6 : sy - 5;
+  svgText(svg, sx + siteW_px / 2, topLabelY, hLabel, { size: 8, color: '#555' });
+
+  // 左辺ラベル（道路が左にある場合は道路の外側へ）
+  const leftLabelX = (dir === 'W') ? sx - roadThick - 4 : sx - 6;
+  svgText(svg, leftLabelX, sy + siteD_px / 2, vLabel, { size: 8, color: '#555', anchor: 'end' });
+
+  // 敷地面積（道路が右にある場合は道路を越えた外側へ）
+  const areaLabelX = (dir === 'E') ? sx + siteW_px + roadThick + 4 : sx + siteW_px + 4;
+  svgText(svg, areaLabelX, sy + siteD_px / 2, `${Math.round(siteArea)}㎡`, { size: 8, color: '#888', anchor: 'start' });
+
+  // セットバック寸法（前面）
+  if (marginFront_px > 2) {
+    const m_real = (marginFront_px / scale).toFixed(1);
+    if (isNS) {
+      const sbY = dir === 'S' ? sy + siteD_px : sy;
+      const bldEdgeY = dir === 'S' ? bldY + bldD_px : bldY;
+      svg.appendChild(svgEl('line', { x1: bldX + bldW_px + 4, y1: bldEdgeY, x2: bldX + bldW_px + 4, y2: sbY, stroke: '#aaa', 'stroke-width': 1 }));
+      svgText(svg, bldX + bldW_px + 14, (bldEdgeY + sbY) / 2, `${m_real}m`, { size: 7, color: '#aaa', anchor: 'start' });
+    }
+  }
+
+  // ── 方位記号（右上角）──────────────────────────────────────
+  drawCompass(svg, SVG_W - 20, 18, dir);
+}
+
+function drawCompass(svg, cx, cy, roadDir) {
+  const r = 12;
+  // 背景円
+  svg.appendChild(svgEl('circle', { cx, cy, r: r + 3, fill: 'rgba(255,255,255,0.85)', stroke: '#bbb', 'stroke-width': 1 }));
+
+  // 4方向の矢印（N=上、S=下、E=右、W=左）
+  const dirs = [
+    { d: 'N', dx: 0, dy: -1 },
+    { d: 'S', dx: 0, dy:  1 },
+    { d: 'E', dx: 1, dy:  0 },
+    { d: 'W', dx:-1, dy:  0 },
+  ];
+  for (const { d, dx, dy } of dirs) {
+    const isRoad = d === roadDir;
+    const tipX = cx + dx * r;
+    const tipY = cy + dy * r;
+    // 矢印幅用の垂直方向
+    const perp = 3.5;
+    const bx1 = cx + (-dy) * perp;
+    const by1 = cy +   dx  * perp;
+    const bx2 = cx +   dy  * perp;
+    const by2 = cy + (-dx) * perp;
+    svg.appendChild(svgEl('polygon', {
+      points: `${tipX},${tipY} ${bx1},${by1} ${bx2},${by2}`,
+      fill: isRoad ? '#e74c3c' : (d === 'N' ? '#1a3a6b' : '#aaa'),
+      stroke: 'white', 'stroke-width': 0.5
+    }));
+  }
+
+  // N ラベル（常に上）
+  svgText(svg, cx, cy - r - 4, 'N', { size: 8, color: roadDir === 'N' ? '#e74c3c' : '#1a3a6b', bold: true });
+}
+
+window._planDir = 'S';
+
+function setPlanDir(dir) {
+  window._planDir = dir;
+  // ボタンのスタイル更新
+  ['N', 'S', 'E', 'W'].forEach(d => {
+    const btn = document.getElementById('dirBtn_' + d);
+    if (!btn) return;
+    btn.style.background = d === dir ? '#2563eb' : '#e2e8f0';
+    btn.style.color      = d === dir ? 'white'   : '#333';
+  });
+  drawPlan(window._vcResult);
+}
+
+function drawDiagrams() {
+  drawSection(window._vcResult);
+  drawPlan(window._vcResult);
+}
+
+function openGaisan() {
+  const r = window._vcResult;
+  if (!r) { alert('先に計算してください'); return; }
+
+  const propName = document.getElementById('propName').value;
+  const propAddr = document.getElementById('propAddr').value;
+
+  const params = new URLSearchParams({
+    propName,
+    propAddr,
+    siteArea:   Math.round(r.siteArea),
+    buildArea:  Math.round(r.buildArea),
+    floorTotal: Math.round(r.maxFloor),
+    floorVol:   Math.round(r.maxFloor * 0.9),
+    floors:     r.floors,
+    floorH:     r.floorH,
+    units:      r.units,
+    unitArea:   r.unitArea,
+  });
+
+  window.open('gaisan_tool.html?' + params.toString(), '_blank');
+}
+
+// 初期計算
+calc();
+</script>
+</body>
+</html>
